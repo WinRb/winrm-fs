@@ -6,6 +6,8 @@
 Files may be copied from the local machine to the winrm endpoint. Individual
 files or directories may be specified:
 ```ruby
+require 'winrm-fs'
+
 service = WinRM::WinRMWebService.new(...
 file_manager = WinRM::FS::FileManager.new(service)
 file_manager.upload('c:/dev/my_dir', '$env:AppData')
