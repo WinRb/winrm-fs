@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'bundler/setup'
 require 'rspec/core/rake_task'
+require 'rubocop/rake_task'
 
 # Change to the directory of this file.
 Dir.chdir(File.expand_path("../", __FILE__))
@@ -21,6 +22,8 @@ RSpec::Core::RakeTask.new(:integration) do |task|
   task.rspec_opts << '-tintegration'
 end
 
-task :default => :spec
+RuboCop::RakeTask.new
 
-task :all => [:spec, :integration]
+task :default => [:spec, :rubocop]
+
+task :all => [:default, :integration]
