@@ -1,11 +1,13 @@
+# encoding: UTF-8
+#
 # Copyright 2015 Shawn Neal <sneal@sneal.net>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +21,6 @@ module WinRM
   module FS
     # Perform file transfer operations between a local machine and winrm endpoint
     class FileManager
-
       # Creates a new FileManager instance
       # @param [WinRMWebService] WinRM web service client
       def initialize(service)
@@ -64,18 +65,12 @@ module WinRM
       # @param [String] The full path to write the file to locally
       def download(remote_path, local_path)
         @logger.debug("downloading: #{remote_path} -> #{local_path}")
-        script = <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{remote_path}')
-          if (test-path $path) {
-            [System.convert]::ToBase64String([System.IO.File]::ReadAllBytes($path))
-            exit 0
-          }
-          exit 1
-        EOH
+        script = FileManager.download_script(remote_path)
+
         output = @service.powershell(script)
         return false if output[:exitcode] != 0
 
-        contents = output.stdout.gsub("\\n\\r", '')
+        contents = output.stdout.gsub('\n\r', '')
         out = Base64.decode64(contents)
         IO.binwrite(local_path, out)
 
@@ -141,7 +136,7 @@ module WinRM
 
         # Upload the single file and decode on the target
         remote_file = WinRM::FS::Core::RemoteFile.single_remote_file(@service)
-        remote_file.upload(src_file, remote_path, &block) 
+        remote_file.upload(src_file, remote_path, &block)
       end
 
       def upload_multiple_files(local_paths, remote_path, &block)
@@ -151,17 +146,28 @@ module WinRM
         remote_file = WinRM::FS::Core::RemoteFile.multi_remote_file(@service)
         remote_file.upload(temp_zip.path, remote_path, &block)
       ensure
-        temp_zip.delete() if temp_zip
+        temp_zip.delete if temp_zip
       end
 
       def self.create_temp_zip_file(local_paths)
-        temp_zip = WinRM::FS::Core::TempZipFile.new()
+        temp_zip = WinRM::FS::Core::TempZipFile.new
         local_paths.each { |p| temp_zip.add(p) }
         temp_zip
       end
 
       def self.src_is_single_file?(local_paths)
         local_paths.count == 1 && File.file?(local_paths[0])
+      end
+
+      def self.download_script(remote_path)
+        <<-EOH
+          $path = [System.IO.Path]::GetFullPath('#{remote_path}')
+          if (test-path $path) {
+            [System.convert]::ToBase64String([System.IO.File]::ReadAllBytes($path))
+            exit 0
+          }
+          exit 1
+        EOH
       end
     end
   end

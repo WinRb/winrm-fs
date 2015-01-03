@@ -1,4 +1,5 @@
-describe WinRM::FS::FileManager, :integration => true do
+# encoding: UTF-8
+describe WinRM::FS::FileManager, integration: true do
   let(:dest_dir) { File.join(subject.temp_dir, "winrm_#{rand(2**16)}") }
   let(:src_dir) { File.expand_path(File.dirname(__FILE__)) }
   let(:service) { winrm_connection }
@@ -25,7 +26,7 @@ describe WinRM::FS::FileManager, :integration => true do
 
   context 'temp_dir' do
     it 'should return the remote users temp dir' do
-      expect(subject.temp_dir).to match(/C:\/Users\/\w+\/AppData\/Local\/Temp/)
+      expect(subject.temp_dir).to match(%r{C:/Users/\w+/AppData/Local/Temp})
     end
   end
 
@@ -61,7 +62,8 @@ describe WinRM::FS::FileManager, :integration => true do
     end
 
     it 'yields progress data' do
-      total = subject.upload(src_file, dest_file) do |bytes_copied, total_bytes, local_path, remote_path|
+      total = subject.upload(src_file, dest_file) do \
+        |bytes_copied, total_bytes, local_path, remote_path|
         expect(total_bytes).to be > 0
         expect(bytes_copied).to eq(total_bytes)
         expect(local_path).to eq(src_file)

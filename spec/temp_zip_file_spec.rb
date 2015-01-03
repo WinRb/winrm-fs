@@ -1,18 +1,19 @@
+# encoding: UTF-8
 require 'zip'
 require_relative '../lib/winrm-fs/core/temp_zip_file'
 
-describe WinRM::FS::Core::TempZipFile, :integration => true do
+describe WinRM::FS::Core::TempZipFile, integration: true do
   let(:src_dir) { File.expand_path('../lib/winrm-fs', File.dirname(__FILE__)) }
   let(:src_file) { __FILE__ }
 
-  subject { WinRM::FS::Core::TempZipFile.new() }
-  after(:each) { subject.delete() }
+  subject { WinRM::FS::Core::TempZipFile.new }
+  after(:each) { subject.delete }
 
   context 'temp file creation' do
     it 'should create a temp file on disk' do
-      expect(File.exists?(subject.path)).to be true
-      subject.delete()
-      expect(File.exists?(subject.path)).to be false
+      expect(File.exist?(subject.path)).to be true
+      subject.delete
+      expect(File.exist?(subject.path)).to be false
     end
   end
 
@@ -33,7 +34,7 @@ describe WinRM::FS::Core::TempZipFile, :integration => true do
       expect(subject).to contain_zip_entries(File.basename(src_file))
     end
   end
-  
+
   context 'add_directory' do
     it 'should raise error when directory does not exist' do
       expect { subject.add_directory('/etc/does/not/exist') }.to \

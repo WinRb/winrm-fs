@@ -1,16 +1,17 @@
+# encoding: UTF-8
 require 'rspec/expectations'
 
 RSpec::Matchers.define :have_created do |remote_file|
   match do |file_manager|
     if @expected_content
       downloaded_file = Tempfile.new('downloaded')
-      downloaded_file.close()
+      downloaded_file.close
 
       subject.download(remote_file, downloaded_file.path)
       @actual_content = File.read(downloaded_file.path)
-      downloaded_file.delete()
-      
-      result = file_manager.exists?(remote_file) && \
+      downloaded_file.delete
+
+      file_manager.exists?(remote_file) && \
         @actual_content == @expected_content
     else
       file_manager.exists?(remote_file)
@@ -20,7 +21,7 @@ RSpec::Matchers.define :have_created do |remote_file|
     expected_content = File.read(expected_content) if File.file?(expected_content)
     @expected_content = expected_content
   end
-  failure_message do |file_manager|
+  failure_message do
     if @expected_content
       <<-EOH
 Expected file '#{remote_file}' to exist with content:
