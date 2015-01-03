@@ -1,11 +1,13 @@
+# encoding: UTF-8
+#
 # Copyright 2015 Shawn Neal <sneal@sneal.net>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,8 +23,8 @@ require_relative 'command_executor'
 module WinRM
   module FS
     module Core
+      # A remote file to upload
       class RemoteFile
-
         def self.single_remote_file(service)
           create_remote_file(service) do |cmd_executor|
             WinRM::FS::Core::Base64FileDecoder.new(cmd_executor)
@@ -44,8 +46,16 @@ module WinRM
         end
 
         def upload(local_path, remote_path, &block)
-          @cmd_executor.open()
+          @cmd_executor.open
+          do_upload(local_path, remote_path, &block)
+        rescue WinRMUploadError => e
+          # add additional context, from and to
+          raise WinRMUploadError, "From: #{local_path}\nTo:#{remote_path}\n#{e.message}"
+        ensure
+          @cmd_executor.close
+        end
 
+        def do_upload(local_path, remote_path, &block)
           temp_path = @temp_file_resolver.temp_file_path(local_path, remote_path)
           if temp_path.empty?
             @logger.debug("Content up to date, skipping: #{local_path}")
@@ -57,24 +67,15 @@ module WinRM
           @file_decoder.decode(temp_path, remote_path)
 
           size
-        rescue WinRMUploadError => e
-          # add additional context, from and to
-          raise WinRMUploadError,
-            :from => local_path,
-            :to => remote_path,
-            :message => e.message
-        ensure
-          @cmd_executor.close()
         end
-
-        private
 
         def self.create_remote_file(service, &block)
           cmd_executor = WinRM::FS::Core::CommandExecutor.new(service)
           temp_file_resolver = WinRM::FS::Core::Md5TempFileResolver.new(cmd_executor)
           file_uploader = WinRM::FS::Core::Base64FileUploader.new(cmd_executor)
           file_decoder = block.call(cmd_executor)
-          WinRM::FS::Core::RemoteFile.new(cmd_executor, temp_file_resolver, file_uploader, file_decoder)
+          WinRM::FS::Core::RemoteFile.new(
+            cmd_executor, temp_file_resolver, file_uploader, file_decoder)
         end
       end
     end

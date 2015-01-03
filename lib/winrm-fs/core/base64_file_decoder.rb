@@ -1,11 +1,13 @@
+# encoding: UTF-8
+#
 # Copyright 2015 Shawn Neal <sneal@sneal.net>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +21,6 @@ module WinRM
     module Core
       # Decodes a base64 file on a target machine and writes it out
       class Base64FileDecoder
-
         def initialize(command_executor)
           @command_executor = command_executor
         end
@@ -34,10 +35,12 @@ module WinRM
 
         protected
 
+        # rubocop:disable Metrics/MethodLength
         def decode_script(base64_encoded_file, dest_file)
           <<-EOH
-            $tempFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath("#{base64_encoded_file}")
-            $destFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath("#{dest_file}")
+            $p = $ExecutionContext.SessionState.Path
+            $tempFile = $p.GetUnresolvedProviderPathFromPSPath("#{base64_encoded_file}")
+            $destFile = $p.GetUnresolvedProviderPathFromPSPath("#{dest_file}")
 
             # ensure the file's containing directory exists
             $destDir = ([System.IO.Path]::GetDirectoryName($destFile))
@@ -55,6 +58,7 @@ module WinRM
             }
           EOH
         end
+        # rubocop:enable Metrics/MethodLength
       end
     end
   end

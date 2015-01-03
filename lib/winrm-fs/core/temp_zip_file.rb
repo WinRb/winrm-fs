@@ -1,11 +1,13 @@
+# encoding: UTF-8
+#
 # Copyright 2015 Shawn Neal <sneal@sneal.net>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,14 +19,14 @@ require 'zip'
 module WinRM
   module FS
     module Core
+      # Temporary zip file on the local system
       class TempZipFile
-
         attr_reader :path
 
-        def initialize()
+        def initialize
           @logger = Logging.logger[self]
           @zip_file = Tempfile.new(['winrm_upload', '.zip'])
-          @zip_file.close()
+          @zip_file.close
           @path = @zip_file.path
         end
 
@@ -36,27 +38,27 @@ module WinRM
           elsif File.file?(path)
             add_file(path)
           else
-            raise "#{path} doesn't exist"
+            fail "#{path} doesn't exist"
           end
         end
 
         # Adds all files in the specified directory recursively into the zip file
         # @param [String] Directory to add into zip
         def add_directory(dir)
-          raise "#{dir} isn't a directory" unless File.directory?(dir)
-          glob = File.join(dir, "**/*")
+          fail "#{dir} isn't a directory" unless File.directory?(dir)
+          glob = File.join(dir, '**/*')
           Dir.glob(glob).each do |file|
             add_file_entry(file, dir)
           end
         end
-        
+
         def add_file(file)
-          raise "#{file} isn't a file" unless File.file?(file)
+          fail "#{file} isn't a file" unless File.file?(file)
           add_file_entry(file, File.dirname(file))
         end
 
-        def delete()
-          @zip_file.delete()
+        def delete
+          @zip_file.delete
         end
 
         private
@@ -70,10 +72,22 @@ module WinRM
         def write_zip_entry(file, file_entry_path)
           @logger.debug("adding zip entry: #{file_entry_path}")
           Zip::File.open(@path, 'w') do |zipfile|
-            entry = Zip::Entry.new(@path, file_entry_path, \
-              nil, nil, nil, nil, nil, nil, ::Zip::DOSTime.new(2000))
+            entry = new_zip_entry(file_entry_path)
             zipfile.add(entry, file)
           end
+        end
+
+        def new_zip_entry(file_entry_path)
+          Zip::Entry.new(
+            @path,
+            file_entry_path,
+            nil,
+            nil,
+            nil,
+            nil,
+            nil,
+            nil,
+            ::Zip::DOSTime.new(2000))
         end
       end
     end

@@ -1,11 +1,13 @@
+# encoding: UTF-8
+#
 # Copyright 2015 Shawn Neal <sneal@sneal.net>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +18,7 @@ module WinRM
   module FS
     # WinRM-FS base class for errors
     class WinRMFSError < StandardError; end
-    
+
     # Error that occurs when a file upload fails
     class WinRMUploadError < WinRMFSError; end
 
