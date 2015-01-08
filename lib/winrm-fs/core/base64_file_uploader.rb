@@ -33,28 +33,34 @@ module WinRM
         # @return [Integer] Count of bytes uploaded
         def upload(local_file, remote_file)
           @command_executor.run_powershell(prepare_script(remote_file))
+          do_upload(local_file, dos_path(remote_file))
+        end
 
-          # TODO: proper regex replace of all env vars
-          remote_file = remote_file.gsub(/\$env:TEMP/, '%TEMP%')
+        private
 
-          # TODO: proper escaping?
-          # if exist/del command needs backslashes, however the echo
-          # append command needs forwards slashes when the file name
-          # starts with a number
-
-          base64_host_file = Base64.encode64(IO.binread(local_file)).gsub("\n", '')
-          base64_array = base64_host_file.chars.to_a
+        def do_upload(local_file, remote_file)
           bytes_copied = 0
-
+          base64_array = base64_content(local_file)
           base64_array.each_slice(8000 - remote_file.size) do |chunk|
-            @command_executor.run_cmd("echo #{chunk.join} >> \"#{remote_file.gsub(/\\/, '/')}\"")
+            @command_executor.run_cmd("echo #{chunk.join} >> \"#{remote_file}\"")
             bytes_copied += chunk.count
             yield bytes_copied, base64_array.count if block_given?
           end
-
           base64_array.length
         end
 
+        def base64_content(local_file)
+          base64_host_file = Base64.encode64(IO.binread(local_file)).gsub("\n", '')
+          base64_host_file.chars.to_a
+        end
+
+        def dos_path(path)
+          # TODO: convert all env vars
+          path = path.gsub(/\$env:TEMP/, '%TEMP%')
+          path.gsub(/\\/, '/')
+        end
+
+        # rubocop:disable Metrics/MethodLength
         def prepare_script(remote_file)
           <<-EOH
             $p = $ExecutionContext.SessionState.Path
@@ -72,6 +78,7 @@ module WinRM
             }
           EOH
         end
+        # rubocop:enable Metrics/MethodLength
       end
     end
   end
