@@ -120,15 +120,15 @@ module WinRM
 
       private
 
-      def upload_file(src_file, remote_path, &block)
+      def upload_file(local_path, remote_path, &block)
         # If the src has a file extension and the destination does not
         # we can assume the caller specified the dest as a directory
-        if File.extname(src_file) != '' && File.extname(remote_path) == ''
-          remote_path = File.join(remote_path, File.basename(src_file))
+        if File.extname(local_path) != '' && File.extname(remote_path) == ''
+          remote_path = File.join(remote_path, File.basename(local_path))
         end
 
         # See if we need to upload the file
-        local_checksum = Digest::MD5.file(src_file).hexdigest
+        local_checksum = Digest::MD5.file(local_path).hexdigest
         remote_checksum = checksum(remote_path)
 
         if remote_checksum == local_checksum
@@ -138,21 +138,7 @@ module WinRM
 
         @logger.debug("Uploading #{remote_path}")
         temp_path = "$env:TEMP/winrm-upload/#{local_checksum}.tmp"
-
-        cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
-        cmd_executor.open
-
-        file_uploader = WinRM::FS::Core::FileUploader.new(cmd_executor)
-        bytes = file_uploader.upload(src_file, temp_path) do |bytes_copied, total_bytes|
-          yield bytes_copied, total_bytes, src_file, remote_path if block_given?
-        end
-
-        file_decoder = WinRM::FS::Core::FileDecoder.new(cmd_executor)
-        file_decoder.decode(temp_path, remote_path)
-
-        bytes
-      ensure
-        cmd_executor.close if cmd_executor
+        do_file_upload(local_path, temp_path, remote_path)
       end
 
       def upload_multiple_files(local_paths, remote_path, &block)
@@ -169,21 +155,26 @@ module WinRM
         end
 
         @logger.debug("Uploading #{remote_path}")
+        do_file_upload(temp_zip.path, temp_path, remote_path)
+      ensure
+        temp_zip.delete if temp_zip
+      end
 
+      def do_file_upload(local_path, temp_path, remote_path)
         cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
         cmd_executor.open
 
         file_uploader = WinRM::FS::Core::FileUploader.new(cmd_executor)
-        bytes = file_uploader.upload(temp_zip.path, temp_path) do |bytes_copied, total_bytes|
-          yield bytes_copied, total_bytes, temp_zip.path, remote_path if block_given?
+        bytes = file_uploader.upload(local_path, temp_path) do |bytes_copied, total_bytes|
+          yield bytes_copied, total_bytes, local_path, remote_path if block_given?
         end
 
-        file_decoder = WinRM::FS::Core::ZipFileDecoder.new(cmd_executor)
-        file_decoder.decode(temp_path, remote_path)
+        file_decoder = WinRM::FS::Core::FileDecoder.new(cmd_executor)
+        file_decoder = WinRM::FS::Core::ZipFileDecoder.new(cmd_executor) if File.extname(temp_path) == '.zip'
 
+        file_decoder.decode(temp_path, remote_path)
         bytes
       ensure
-        temp_zip.delete if temp_zip
         cmd_executor.close if cmd_executor
       end
 
