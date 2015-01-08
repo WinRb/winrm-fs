@@ -49,7 +49,10 @@ module WinRM
             }
 
             # get the encoded temp file contents, decode, and write to final dest file
-            $base64Content = Get-Content $tempFile
+            if (Test-Path $tempFile -PathType Leaf) {
+              $base64Content = Get-Content $tempFile
+            }
+            
             if ($base64Content -eq $null) {
               New-Item -ItemType file -Force $destFile
             } else {

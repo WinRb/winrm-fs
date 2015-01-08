@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require_relative 'core/remote_file'
 require_relative 'core/temp_zip_file'
+require_relative 'core/base64_file_decoder'
+require_relative 'core/base64_zip_file_decoder'
+require_relative 'core/base64_file_uploader'
+require_relative 'core/command_executor'
 
 module WinRM
   module FS
@@ -28,13 +31,38 @@ module WinRM
         @logger = Logging.logger[self]
       end
 
+      # Gets the MD5 checksum of the specified file if it exists,
+      # otherwise ''
+      # @param [String] The remote file path
+      def checksum(path)
+        @logger.debug("checksum: #{path}")
+        script = <<-EOH
+          $p = $ExecutionContext.SessionState.Path
+          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
+
+          if (Test-Path $path -PathType Leaf) {
+            $cryptoProv = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+            $file = [System.IO.File]::Open($path,
+                [System.IO.Filemode]::Open, [System.IO.FileAccess]::Read)
+            $md5 = ([System.BitConverter]::ToString($cryptoProv.ComputeHash($file)))
+            $md5 = $md5.Replace("-","").ToLower()
+            $file.Close()
+
+            Write-Host $md5
+          }
+        EOH
+        output = @service.powershell(script)
+        output.stdout.chomp
+      end
+
       # Create the specifed directory recursively
       # @param [String] The remote dir to create
       # @return [Boolean] True if successful, otherwise false
       def create_dir(path)
         @logger.debug("create_dir: #{path}")
         script = <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{path}')
+          $p = $ExecutionContext.SessionState.Path
+          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
           if (!(test-path $path)) {
             ni -itemtype directory -force -path $path | out-null
             exit $LASTEXITCODE
@@ -50,7 +78,8 @@ module WinRM
       def delete(path)
         @logger.debug("deleting: #{path}")
         script = <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{path}')
+          $p = $ExecutionContext.SessionState.Path
+          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
           if (test-path $path) {
             ri $path -force -recurse
             exit $LASTEXITCODE
@@ -83,7 +112,8 @@ module WinRM
       def exists?(path)
         @logger.debug("exists?: #{path}")
         script = <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{path}')
+          $p = $ExecutionContext.SessionState.Path
+          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
           if (test-path $path) { exit 0 } else { exit 1 }
         EOH
         @service.powershell(script)[:exitcode] == 0
@@ -134,19 +164,69 @@ module WinRM
           remote_path = File.join(remote_path, File.basename(src_file))
         end
 
-        # Upload the single file and decode on the target
-        remote_file = WinRM::FS::Core::RemoteFile.single_remote_file(@service)
-        remote_file.upload(src_file, remote_path, &block)
+        # See if we need to upload the file
+        local_checksum = Digest::MD5.file(src_file).hexdigest
+        remote_checksum = checksum(remote_path)
+
+        if remote_checksum == local_checksum
+          @logger.debug("#{remote_path} is up to date")
+          return 0
+        end
+
+        @logger.debug("Uploading #{remote_path}")
+        temp_path = "$env:TEMP/#{local_checksum}.tmp"
+
+        @logger.info("Remote checksum: #{remote_checksum}")
+        delete(temp_path)
+
+        cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
+        cmd_executor.open
+
+        file_uploader = WinRM::FS::Core::Base64FileUploader.new(cmd_executor)
+        bytes = file_uploader.upload(src_file, temp_path) do |bytes_copied, total_bytes|
+          yield bytes_copied, total_bytes, src_file, remote_path if block_given?
+        end
+
+        file_decoder = WinRM::FS::Core::Base64FileDecoder.new(cmd_executor)
+        file_decoder.decode(temp_path, remote_path)
+
+        bytes
+      ensure
+        cmd_executor.close if cmd_executor
       end
 
       def upload_multiple_files(local_paths, remote_path, &block)
         temp_zip = FileManager.create_temp_zip_file(local_paths)
 
-        # Upload and extract the zip file on the target
-        remote_file = WinRM::FS::Core::RemoteFile.multi_remote_file(@service)
-        remote_file.upload(temp_zip.path, remote_path, &block)
+        # See if we need to upload the file
+        local_checksum = Digest::MD5.file(temp_zip.path).hexdigest
+        temp_path = "$env:TEMP/#{local_checksum}.zip"
+        remote_checksum = checksum(temp_path)
+
+        if remote_checksum == local_checksum
+          @logger.debug("#{remote_path} is up to date")
+          return 0
+        end
+
+        @logger.debug("Uploading #{remote_path}")
+
+        delete(temp_path)
+
+        cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
+        cmd_executor.open
+
+        file_uploader = WinRM::FS::Core::Base64FileUploader.new(cmd_executor)
+        bytes = file_uploader.upload(temp_zip.path, temp_path) do |bytes_copied, total_bytes|
+          yield bytes_copied, total_bytes, temp_zip.path, remote_path if block_given?
+        end
+
+        file_decoder = WinRM::FS::Core::Base64ZipFileDecoder.new(cmd_executor)
+        file_decoder.decode(temp_path, remote_path)
+
+        bytes
       ensure
         temp_zip.delete if temp_zip
+        cmd_executor.close if cmd_executor
       end
 
       def self.create_temp_zip_file(local_paths)

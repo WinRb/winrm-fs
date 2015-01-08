@@ -58,7 +58,7 @@ describe WinRM::FS::FileManager, integration: true do
       dest_sub_dir = File.join(dest_dir, 'subdir')
       dest_sub_dir_file = File.join(dest_sub_dir, File.basename(src_file))
       subject.upload(src_file, dest_sub_dir)
-      expect(subject).to have_created(dest_sub_dir_file)
+      expect(subject).to have_created(dest_sub_dir_file).with_content(src_file)
     end
 
     it 'yields progress data' do
@@ -108,6 +108,10 @@ describe WinRM::FS::FileManager, integration: true do
   end
 
   context 'upload directory' do
+    before(:each) do
+      expect(subject.delete(dest_dir)).to be true
+    end
+
     it 'copies the entire directory' do
       bytes_uploaded = subject.upload(src_dir, dest_dir)
       expect(bytes_uploaded).to be > 0
@@ -116,6 +120,19 @@ describe WinRM::FS::FileManager, integration: true do
         remote_file = File.join(dest_dir, host_file_rel)
         expect(subject).to have_created(remote_file).with_content(host_file)
       end
+    end
+
+    it 'does not copy the directory when content is the same' do
+      subject.upload(src_dir, dest_dir)
+      bytes_uploaded = subject.upload(src_dir, dest_dir)
+      expect(bytes_uploaded).to eq 0
+    end
+
+    it 'copies the directory when content differs' do
+      subject.upload(src_dir, dest_dir)
+      another_dir = File.dirname(src_dir)
+      bytes_uploaded = subject.upload(another_dir, dest_dir)
+      expect(bytes_uploaded).to be > 0
     end
   end
 end

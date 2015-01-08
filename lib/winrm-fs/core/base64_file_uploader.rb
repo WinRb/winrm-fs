@@ -23,23 +23,31 @@ module WinRM
       class Base64FileUploader
         def initialize(command_executor)
           @command_executor = command_executor
+          @logger = Logging.logger[self]
         end
 
         # Uploads the given file to the specified temp file as base64 encoded.
         #
         # @param [String] Path to the local source file on this machine
-        # @param [String] Path to the temporary file on the target machine
-        # @param [String] Path to the target file on the target machine
+        # @param [String] Path to the file on the target machine
         # @return [Integer] Count of bytes uploaded
-        def upload_to_temp_file(local_file, temp_file, remote_file)
+        def upload(local_file, remote_file)
+          # TODO: proper regex replace of all env vars
+          remote_file = remote_file.gsub(/\$env:TEMP/, '%TEMP%')
+
+          # TODO: proper escaping?
+          # if exist/del command needs backslashes, however the echo
+          # append command needs forwards slashes when the file name
+          # starts with a number
+
           base64_host_file = Base64.encode64(IO.binread(local_file)).gsub("\n", '')
           base64_array = base64_host_file.chars.to_a
           bytes_copied = 0
 
-          base64_array.each_slice(8000 - temp_file.size) do |chunk|
-            @command_executor.run_cmd("echo #{chunk.join} >> \"#{temp_file}\"")
+          base64_array.each_slice(8000 - remote_file.size) do |chunk|
+            @command_executor.run_cmd("echo #{chunk.join} >> \"#{remote_file.gsub(/\\/, '/')}\"")
             bytes_copied += chunk.count
-            yield bytes_copied, base64_array.count, local_file, remote_file if block_given?
+            yield bytes_copied, base64_array.count if block_given?
           end
 
           base64_array.length
