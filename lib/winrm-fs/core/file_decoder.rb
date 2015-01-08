@@ -20,7 +20,7 @@ module WinRM
   module FS
     module Core
       # Decodes a base64 file on a target machine and writes it out
-      class Base64FileDecoder
+      class FileDecoder
         def initialize(command_executor)
           @command_executor = command_executor
         end

@@ -15,9 +15,9 @@
 # limitations under the License.
 
 require_relative 'core/temp_zip_file'
-require_relative 'core/base64_file_decoder'
-require_relative 'core/base64_zip_file_decoder'
-require_relative 'core/base64_file_uploader'
+require_relative 'core/file_decoder'
+require_relative 'core/zip_file_decoder'
+require_relative 'core/file_uploader'
 require_relative 'core/command_executor'
 
 module WinRM
@@ -179,12 +179,12 @@ module WinRM
         cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
         cmd_executor.open
 
-        file_uploader = WinRM::FS::Core::Base64FileUploader.new(cmd_executor)
+        file_uploader = WinRM::FS::Core::FileUploader.new(cmd_executor)
         bytes = file_uploader.upload(src_file, temp_path) do |bytes_copied, total_bytes|
           yield bytes_copied, total_bytes, src_file, remote_path if block_given?
         end
 
-        file_decoder = WinRM::FS::Core::Base64FileDecoder.new(cmd_executor)
+        file_decoder = WinRM::FS::Core::FileDecoder.new(cmd_executor)
         file_decoder.decode(temp_path, remote_path)
 
         bytes
@@ -210,12 +210,12 @@ module WinRM
         cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
         cmd_executor.open
 
-        file_uploader = WinRM::FS::Core::Base64FileUploader.new(cmd_executor)
+        file_uploader = WinRM::FS::Core::FileUploader.new(cmd_executor)
         bytes = file_uploader.upload(temp_zip.path, temp_path) do |bytes_copied, total_bytes|
           yield bytes_copied, total_bytes, temp_zip.path, remote_path if block_given?
         end
 
-        file_decoder = WinRM::FS::Core::Base64ZipFileDecoder.new(cmd_executor)
+        file_decoder = WinRM::FS::Core::ZipFileDecoder.new(cmd_executor)
         file_decoder.decode(temp_path, remote_path)
 
         bytes

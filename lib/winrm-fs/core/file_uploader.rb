@@ -20,10 +20,9 @@ module WinRM
   module FS
     module Core
       # Uploads the given source file to a temp file in 8k chunks
-      class Base64FileUploader
+      class FileUploader
         def initialize(command_executor)
           @command_executor = command_executor
-          @logger = Logging.logger[self]
         end
 
         # Uploads the given file to the specified temp file as base64 encoded.
