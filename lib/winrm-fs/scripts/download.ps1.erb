@@ -1,0 +1,7 @@
+$p = $ExecutionContext.SessionState.Path
+$path = $p.GetUnresolvedProviderPathFromPSPath("<%= path %>")
+if (test-path $path) {
+  [System.convert]::ToBase64String([System.IO.File]::ReadAllBytes($path))
+  exit 0
+}
+exit 1

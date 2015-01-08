@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+require_relative 'scripts/scripts'
 require_relative 'core/temp_zip_file'
 require_relative 'core/file_decoder'
 require_relative 'core/zip_file_decoder'
@@ -36,23 +37,8 @@ module WinRM
       # @param [String] The remote file path
       def checksum(path)
         @logger.debug("checksum: #{path}")
-        script = <<-EOH
-          $p = $ExecutionContext.SessionState.Path
-          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
-
-          if (Test-Path $path -PathType Leaf) {
-            $cryptoProv = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
-            $file = [System.IO.File]::Open($path,
-                [System.IO.Filemode]::Open, [System.IO.FileAccess]::Read)
-            $md5 = ([System.BitConverter]::ToString($cryptoProv.ComputeHash($file)))
-            $md5 = $md5.Replace("-","").ToLower()
-            $file.Close()
-
-            Write-Host $md5
-          }
-        EOH
-        output = @service.powershell(script)
-        output.stdout.chomp
+        script = WinRM::FS::Scripts.render('checksum', path: path)
+        @service.powershell(script).stdout.chomp
       end
 
       # Create the specifed directory recursively
@@ -60,15 +46,7 @@ module WinRM
       # @return [Boolean] True if successful, otherwise false
       def create_dir(path)
         @logger.debug("create_dir: #{path}")
-        script = <<-EOH
-          $p = $ExecutionContext.SessionState.Path
-          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
-          if (!(test-path $path)) {
-            ni -itemtype directory -force -path $path | out-null
-            exit $LASTEXITCODE
-          }
-          exit 0
-        EOH
+        script = WinRM::FS::Scripts.render('create_dir', path: path)
         @service.powershell(script)[:exitcode] == 0
       end
 
@@ -77,15 +55,7 @@ module WinRM
       # @return [Boolean] True if successful, otherwise False
       def delete(path)
         @logger.debug("deleting: #{path}")
-        script = <<-EOH
-          $p = $ExecutionContext.SessionState.Path
-          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
-          if (test-path $path) {
-            ri $path -force -recurse
-            exit $LASTEXITCODE
-          }
-          exit 0
-        EOH
+        script = WinRM::FS::Scripts.render('delete', path: path)
         @service.powershell(script)[:exitcode] == 0
       end
 
@@ -94,15 +64,12 @@ module WinRM
       # @param [String] The full path to write the file to locally
       def download(remote_path, local_path)
         @logger.debug("downloading: #{remote_path} -> #{local_path}")
-        script = FileManager.download_script(remote_path)
-
+        script = WinRM::FS::Scripts.render('download', path: remote_path)
         output = @service.powershell(script)
         return false if output[:exitcode] != 0
-
         contents = output.stdout.gsub('\n\r', '')
         out = Base64.decode64(contents)
         IO.binwrite(local_path, out)
-
         true
       end
 
@@ -111,11 +78,7 @@ module WinRM
       # @return [Boolean] True if the file/dir exists, otherwise false.
       def exists?(path)
         @logger.debug("exists?: #{path}")
-        script = <<-EOH
-          $p = $ExecutionContext.SessionState.Path
-          $path = $p.GetUnresolvedProviderPathFromPSPath("#{path}")
-          if (test-path $path) { exit 0 } else { exit 1 }
-        EOH
+        script = WinRM::FS::Scripts.render('exists', path: path)
         @service.powershell(script)[:exitcode] == 0
       end
 
@@ -232,17 +195,6 @@ module WinRM
 
       def self.src_is_single_file?(local_paths)
         local_paths.count == 1 && File.file?(local_paths[0])
-      end
-
-      def self.download_script(remote_path)
-        <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{remote_path}')
-          if (test-path $path) {
-            [System.convert]::ToBase64String([System.IO.File]::ReadAllBytes($path))
-            exit 0
-          }
-          exit 1
-        EOH
       end
     end
   end
