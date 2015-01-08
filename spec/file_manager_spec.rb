@@ -1,10 +1,16 @@
 # encoding: UTF-8
 describe WinRM::FS::FileManager, integration: true do
   let(:dest_dir) { File.join(subject.temp_dir, "winrm_#{rand(2**16)}") }
+  let(:temp_upload_dir) { "$env:TEMP/winrm-upload" }
   let(:src_dir) { File.expand_path(File.dirname(__FILE__)) }
   let(:service) { winrm_connection }
 
   subject { WinRM::FS::FileManager.new(service) }
+
+  before(:each) do
+    expect(subject.delete(dest_dir)).to be true
+    expect(subject.delete(temp_upload_dir)).to be true
+  end
 
   context 'exists?' do
     it 'should exist' do
@@ -108,10 +114,6 @@ describe WinRM::FS::FileManager, integration: true do
   end
 
   context 'upload directory' do
-    before(:each) do
-      expect(subject.delete(dest_dir)).to be true
-    end
-
     it 'copies the entire directory' do
       bytes_uploaded = subject.upload(src_dir, dest_dir)
       expect(bytes_uploaded).to be > 0

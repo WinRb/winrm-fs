@@ -32,6 +32,8 @@ module WinRM
         # @param [String] Path to the file on the target machine
         # @return [Integer] Count of bytes uploaded
         def upload(local_file, remote_file)
+          @command_executor.run_powershell(prepare_script(remote_file))
+
           # TODO: proper regex replace of all env vars
           remote_file = remote_file.gsub(/\$env:TEMP/, '%TEMP%')
 
@@ -51,6 +53,24 @@ module WinRM
           end
 
           base64_array.length
+        end
+
+        def prepare_script(remote_file)
+          <<-EOH
+            $p = $ExecutionContext.SessionState.Path
+            $path = $p.GetUnresolvedProviderPathFromPSPath("#{remote_file}")
+
+            # if the file exists, truncate it
+            if (Test-Path $path -PathType Leaf) {
+              '' | Set-Content $path
+            }
+
+            # ensure the target directory exists
+            $dir = [System.IO.Path]::GetDirectoryName($path)
+            if (!(Test-Path $dir -PathType Container)) {
+              mkdir $dir -ErrorAction SilentlyContinue | Out-Null
+            }
+          EOH
         end
       end
     end

@@ -174,10 +174,7 @@ module WinRM
         end
 
         @logger.debug("Uploading #{remote_path}")
-        temp_path = "$env:TEMP/#{local_checksum}.tmp"
-
-        @logger.info("Remote checksum: #{remote_checksum}")
-        delete(temp_path)
+        temp_path = "$env:TEMP/winrm-upload/#{local_checksum}.tmp"
 
         cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
         cmd_executor.open
@@ -200,7 +197,7 @@ module WinRM
 
         # See if we need to upload the file
         local_checksum = Digest::MD5.file(temp_zip.path).hexdigest
-        temp_path = "$env:TEMP/#{local_checksum}.zip"
+        temp_path = "$env:TEMP/winrm-upload/#{local_checksum}.zip"
         remote_checksum = checksum(temp_path)
 
         if remote_checksum == local_checksum
@@ -209,8 +206,6 @@ module WinRM
         end
 
         @logger.debug("Uploading #{remote_path}")
-
-        delete(temp_path)
 
         cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
         cmd_executor.open
