@@ -94,15 +94,15 @@ module WinRM
           true
         end
 
+        def remote_checksum(cmd_executor, remote_path)
+          script = WinRM::FS::Scripts.render('checksum', path: remote_path)
+          cmd_executor.run_powershell(script).chomp
+        end
+
         def create_temp_zip_file(local_paths)
           temp_zip = WinRM::FS::Core::TempZipFile.new
           local_paths.each { |p| temp_zip.add(p) }
           temp_zip
-        end
-
-        def remote_checksum(cmd_executor, remote_path)
-          script = WinRM::FS::Scripts.render('checksum', path: remote_path)
-          cmd_executor.run_powershell(script).chomp
         end
       end
     end
