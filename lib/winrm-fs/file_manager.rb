@@ -15,11 +15,7 @@
 # limitations under the License.
 
 require_relative 'scripts/scripts'
-require_relative 'core/temp_zip_file'
-require_relative 'core/file_decoder'
-require_relative 'core/zip_file_decoder'
-require_relative 'core/file_uploader'
-require_relative 'core/command_executor'
+require_relative 'core/upload_orchestrator'
 
 module WinRM
   module FS
@@ -111,77 +107,12 @@ module WinRM
         @logger.debug("uploading: #{local_paths} -> #{remote_path}")
         local_paths = [local_paths] if local_paths.is_a? String
 
+        upload_orchestrator = WinRM::FS::Core::UploadOrchestrator.new(@service)
         if FileManager.src_is_single_file?(local_paths)
-          upload_file(local_paths[0], remote_path, &block)
+          upload_orchestrator.upload_file(local_paths[0], remote_path, &block)
         else
-          upload_multiple_files(local_paths, remote_path, &block)
+          upload_orchestrator.upload_directory(local_paths, remote_path, &block)
         end
-      end
-
-      private
-
-      def upload_file(local_path, remote_path, &block)
-        # If the src has a file extension and the destination does not
-        # we can assume the caller specified the dest as a directory
-        if File.extname(local_path) != '' && File.extname(remote_path) == ''
-          remote_path = File.join(remote_path, File.basename(local_path))
-        end
-
-        # See if we need to upload the file
-        local_checksum = Digest::MD5.file(local_path).hexdigest
-        remote_checksum = checksum(remote_path)
-
-        if remote_checksum == local_checksum
-          @logger.debug("#{remote_path} is up to date")
-          return 0
-        end
-
-        @logger.debug("Uploading #{remote_path}")
-        temp_path = "$env:TEMP/winrm-upload/#{local_checksum}.tmp"
-        do_file_upload(local_path, temp_path, remote_path)
-      end
-
-      def upload_multiple_files(local_paths, remote_path, &block)
-        temp_zip = FileManager.create_temp_zip_file(local_paths)
-
-        # See if we need to upload the file
-        local_checksum = Digest::MD5.file(temp_zip.path).hexdigest
-        temp_path = "$env:TEMP/winrm-upload/#{local_checksum}.zip"
-        remote_checksum = checksum(temp_path)
-
-        if remote_checksum == local_checksum
-          @logger.debug("#{remote_path} is up to date")
-          return 0
-        end
-
-        @logger.debug("Uploading #{remote_path}")
-        do_file_upload(temp_zip.path, temp_path, remote_path)
-      ensure
-        temp_zip.delete if temp_zip
-      end
-
-      def do_file_upload(local_path, temp_path, remote_path)
-        cmd_executor = WinRM::FS::Core::CommandExecutor.new(@service)
-        cmd_executor.open
-
-        file_uploader = WinRM::FS::Core::FileUploader.new(cmd_executor)
-        bytes = file_uploader.upload(local_path, temp_path) do |bytes_copied, total_bytes|
-          yield bytes_copied, total_bytes, local_path, remote_path if block_given?
-        end
-
-        file_decoder = WinRM::FS::Core::FileDecoder.new(cmd_executor)
-        file_decoder = WinRM::FS::Core::ZipFileDecoder.new(cmd_executor) if File.extname(temp_path) == '.zip'
-
-        file_decoder.decode(temp_path, remote_path)
-        bytes
-      ensure
-        cmd_executor.close if cmd_executor
-      end
-
-      def self.create_temp_zip_file(local_paths)
-        temp_zip = WinRM::FS::Core::TempZipFile.new
-        local_paths.each { |p| temp_zip.add(p) }
-        temp_zip
       end
 
       def self.src_is_single_file?(local_paths)
