@@ -30,24 +30,22 @@ module WinRM
         end
 
         def upload_file(local_path, remote_path)
+          # If the src has a file extension and the destination does not
+          # we can assume the caller specified the dest as a directory
+          if File.extname(local_path) != '' && File.extname(remote_path) == ''
+            remote_path = File.join(remote_path, File.basename(local_path))
+          end
+          temp_path = temp_file_path(local_path)
           with_command_executor do |cmd_executor|
-            # If the src has a file extension and the destination does not
-            # we can assume the caller specified the dest as a directory
-            if File.extname(local_path) != '' && File.extname(remote_path) == ''
-              remote_path = File.join(remote_path, File.basename(local_path))
-            end
-
             return 0 unless out_of_date?(cmd_executor, local_path, remote_path)
-            temp_path = "$env:TEMP/winrm-upload/#{Digest::MD5.file(local_path).hexdigest}.tmp"
             do_file_upload(cmd_executor, local_path, temp_path, remote_path)
           end
         end
 
         def upload_directory(local_paths, remote_path)
-          with_command_executor do |cmd_executor|
-            with_local_zip(local_paths) do |local_zip|
-              temp_path = "$env:TEMP/winrm-upload/#{Digest::MD5.file(local_zip.path).hexdigest}.zip"
-
+          with_local_zip(local_paths) do |local_zip|
+            temp_path = temp_file_path(local_zip.path)
+            with_command_executor do |cmd_executor|
               return 0 unless out_of_date?(cmd_executor, local_zip.path, temp_path)
               do_file_upload(cmd_executor, local_zip.path, temp_path, remote_path)
             end
@@ -84,7 +82,7 @@ module WinRM
         end
 
         def out_of_date?(cmd_executor, local_path, remote_path)
-          local_checksum = Digest::MD5.file(local_path).hexdigest
+          local_checksum = local_checksum(local_path)
           remote_checksum = remote_checksum(cmd_executor, remote_path)
 
           if remote_checksum == local_checksum
@@ -97,6 +95,16 @@ module WinRM
         def remote_checksum(cmd_executor, remote_path)
           script = WinRM::FS::Scripts.render('checksum', path: remote_path)
           cmd_executor.run_powershell(script).chomp
+        end
+
+        def local_checksum(local_path)
+          Digest::MD5.file(local_path).hexdigest
+        end
+
+        def temp_file_path(local_path)
+          ext = '.tmp'
+          ext = '.zip' if File.extname(local_path) == '.zip'
+          "$env:TEMP/winrm-upload/#{local_checksum(local_path)}#{ext}"
         end
 
         def create_temp_zip_file(local_paths)
