@@ -15,7 +15,6 @@
 # limitations under the License.
 
 require_relative 'temp_zip_file'
-require_relative 'file_decoder'
 require_relative 'file_uploader'
 require_relative 'command_executor'
 require_relative '../scripts/scripts'
@@ -63,8 +62,9 @@ module WinRM
             yield bytes_copied, total_bytes, local_path, remote_path if block_given?
           end
 
-          file_decoder = WinRM::FS::Core::FileDecoder.new(cmd_executor)
-          file_decoder.decode(temp_path, remote_path)
+          cmd_executor.run_powershell(
+            WinRM::FS::Scripts.render('decode_file', src: temp_path, dest: remote_path))
+
           bytes
         end
 
