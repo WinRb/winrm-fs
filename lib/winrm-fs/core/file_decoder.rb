@@ -38,27 +38,42 @@ module WinRM
         # rubocop:disable Metrics/MethodLength
         def decode_script(base64_encoded_file, dest_file)
           <<-EOH
-            $p = $ExecutionContext.SessionState.Path
-            $tempFile = $p.GetUnresolvedProviderPathFromPSPath("#{base64_encoded_file}")
-            $destFile = $p.GetUnresolvedProviderPathFromPSPath("#{dest_file}")
+$path = $ExecutionContext.SessionState.Path
+$tempFile = $path.GetUnresolvedProviderPathFromPSPath("#{base64_encoded_file}")
+$dest = $path.GetUnresolvedProviderPathFromPSPath("#{dest_file}")
 
-            # ensure the file's containing directory exists
-            $destDir = ([System.IO.Path]::GetDirectoryName($destFile))
-            if (!(Test-Path $destDir)) {
-              New-Item -ItemType directory -Force -Path $destDir | Out-Null
-            }
+function Decode-File($encodedFile, $decodedFile) {
+    if (Test-Path $encodedFile) {
+      $base64Content = Get-Content $encodedFile
+    }
+    if ($base64Content -eq $null) {
+        New-Item -ItemType file -Force $decodedFile | Out-Null
+    }
+    else {
+        $bytes = [System.Convert]::FromBase64String($base64Content)
+        [System.IO.File]::WriteAllBytes($decodedFile, $bytes) | Out-Null
+    }
+}
 
-            # get the encoded temp file contents, decode, and write to final dest file
-            if (Test-Path $tempFile -PathType Leaf) {
-              $base64Content = Get-Content $tempFile
-            }
+function Ensure-Dir-Exists($path) {
+    # ensure the destination directory exists
+    if (!(Test-Path $path)) {
+        New-Item -ItemType Directory -Force -Path $path | Out-Null
+    }
+}
 
-            if ($base64Content -eq $null) {
-              New-Item -ItemType file -Force $destFile
-            } else {
-              $bytes = [System.Convert]::FromBase64String($base64Content)
-              [System.IO.File]::WriteAllBytes($destFile, $bytes) | Out-Null
-            }
+if ([System.IO.Path]::GetExtension($tempFile) -eq '.zip') {
+    Ensure-Dir-Exists $dest
+    Decode-File $tempFile $tempFile
+    $shellApplication = New-Object -com shell.application
+    $zipPackage = $shellApplication.NameSpace($tempFile)
+    $destinationFolder = $shellApplication.NameSpace($dest)
+    $destinationFolder.CopyHere($zipPackage.Items(), 0x10) | Out-Null
+}
+else {
+    Ensure-Dir-Exists ([System.IO.Path]::GetDirectoryName($dest))
+    Decode-File $tempFile $dest
+}
           EOH
         end
         # rubocop:enable Metrics/MethodLength

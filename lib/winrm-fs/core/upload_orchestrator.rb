@@ -16,7 +16,6 @@
 
 require_relative 'temp_zip_file'
 require_relative 'file_decoder'
-require_relative 'zip_file_decoder'
 require_relative 'file_uploader'
 require_relative 'command_executor'
 require_relative '../scripts/scripts'
@@ -65,8 +64,6 @@ module WinRM
           end
 
           file_decoder = WinRM::FS::Core::FileDecoder.new(cmd_executor)
-          file_decoder = WinRM::FS::Core::ZipFileDecoder.new(cmd_executor) if File.extname(temp_path) == '.zip'
-
           file_decoder.decode(temp_path, remote_path)
           bytes
         end
