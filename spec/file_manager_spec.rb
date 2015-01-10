@@ -1,7 +1,7 @@
 # encoding: UTF-8
 describe WinRM::FS::FileManager, integration: true do
   let(:dest_dir) { File.join(subject.temp_dir, "winrm_#{rand(2**16)}") }
-  let(:temp_upload_dir) { "$env:TEMP/winrm-upload" }
+  let(:temp_upload_dir) { '$env:TEMP/winrm-upload' }
   let(:src_dir) { File.expand_path(File.dirname(__FILE__)) }
   let(:service) { winrm_connection }
 
