@@ -26,6 +26,7 @@ Gem::Specification.new do |s|
   s.bindir = 'bin'
   s.executables   = ['rwinrmcp']
   s.required_ruby_version	= '>= 1.9.0'
+  s.add_runtime_dependency 'erubis', '~> 2.7'
   s.add_runtime_dependency 'logging', '~> 1.6', '>= 1.6.1'
   s.add_runtime_dependency 'rubyzip', '~> 1.1'
   s.add_runtime_dependency 'winrm', '~> 1.3.0.dev.3'

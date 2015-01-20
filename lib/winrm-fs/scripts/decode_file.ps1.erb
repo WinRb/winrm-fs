@@ -1,0 +1,36 @@
+$path = $ExecutionContext.SessionState.Path
+$tempFile = $path.GetUnresolvedProviderPathFromPSPath("<%= src %>")
+$dest = $path.GetUnresolvedProviderPathFromPSPath("<%= dest %>")
+
+function Decode-File($encodedFile, $decodedFile) {
+    if (Test-Path $encodedFile) {
+      $base64Content = Get-Content $encodedFile
+    }
+    if ($base64Content -eq $null) {
+        New-Item -ItemType file -Force $decodedFile | Out-Null
+    }
+    else {
+        $bytes = [System.Convert]::FromBase64String($base64Content)
+        [System.IO.File]::WriteAllBytes($decodedFile, $bytes) | Out-Null
+    }
+}
+
+function Ensure-Dir-Exists($path) {
+    # ensure the destination directory exists
+    if (!(Test-Path $path)) {
+        New-Item -ItemType Directory -Force -Path $path | Out-Null
+    }
+}
+
+if ([System.IO.Path]::GetExtension($tempFile) -eq '.zip') {
+    Ensure-Dir-Exists $dest
+    Decode-File $tempFile $tempFile
+    $shellApplication = New-Object -com shell.application
+    $zipPackage = $shellApplication.NameSpace($tempFile)
+    $destinationFolder = $shellApplication.NameSpace($dest)
+    $destinationFolder.CopyHere($zipPackage.Items(), 0x10) | Out-Null
+}
+else {
+    Ensure-Dir-Exists ([System.IO.Path]::GetDirectoryName($dest))
+    Decode-File $tempFile $dest
+}

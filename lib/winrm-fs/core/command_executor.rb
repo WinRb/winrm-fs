@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require_relative 'powershell_script'
-
 module WinRM
   module FS
     module Core
@@ -35,10 +33,9 @@ module WinRM
           @shell_open = false
         end
 
-        def run_powershell(script_text)
+        def run_powershell(script)
           assert_shell_is_open
-          script = WinRM::FS::Core::PowershellScript.new(script_text)
-          run_cmd('powershell', ['-encodedCommand', script.encoded])
+          run_cmd('powershell', ['-encodedCommand', encode_script(script)])
         end
 
         def run_cmd(command, arguments = [])
@@ -47,7 +44,7 @@ module WinRM
           @service.run_command(@shell, command, arguments) do |command_id|
             result = @service.get_command_output(@shell, command_id)
           end
-          assert_command_success(result)
+          assert_command_success(command, result)
           result.stdout
         end
 
@@ -57,9 +54,14 @@ module WinRM
           fail 'You must call open before calling any run methods' unless @shell_open
         end
 
-        def assert_command_success(result)
+        def assert_command_success(command, result)
           return if result[:exitcode] == 0 && result.stderr.length == 0
-          fail WinRMUploadError, result.output
+          fail WinRMUploadError, command + '\n' + result.output
+        end
+
+        def encode_script(script)
+          encoded_script = script.encode('UTF-16LE', 'UTF-8')
+          Base64.strict_encode64(encoded_script)
         end
       end
     end

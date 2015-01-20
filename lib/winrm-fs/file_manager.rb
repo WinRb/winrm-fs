@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require_relative 'core/remote_file'
-require_relative 'core/temp_zip_file'
+require_relative 'scripts/scripts'
+require_relative 'core/upload_orchestrator'
 
 module WinRM
   module FS
@@ -28,19 +28,21 @@ module WinRM
         @logger = Logging.logger[self]
       end
 
+      # Gets the MD5 checksum of the specified file if it exists,
+      # otherwise ''
+      # @param [String] The remote file path
+      def checksum(path)
+        @logger.debug("checksum: #{path}")
+        script = WinRM::FS::Scripts.render('checksum', path: path)
+        @service.powershell(script).stdout.chomp
+      end
+
       # Create the specifed directory recursively
       # @param [String] The remote dir to create
       # @return [Boolean] True if successful, otherwise false
       def create_dir(path)
         @logger.debug("create_dir: #{path}")
-        script = <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{path}')
-          if (!(test-path $path)) {
-            ni -itemtype directory -force -path $path | out-null
-            exit $LASTEXITCODE
-          }
-          exit 0
-        EOH
+        script = WinRM::FS::Scripts.render('create_dir', path: path)
         @service.powershell(script)[:exitcode] == 0
       end
 
@@ -49,14 +51,7 @@ module WinRM
       # @return [Boolean] True if successful, otherwise False
       def delete(path)
         @logger.debug("deleting: #{path}")
-        script = <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{path}')
-          if (test-path $path) {
-            ri $path -force -recurse
-            exit $LASTEXITCODE
-          }
-          exit 0
-        EOH
+        script = WinRM::FS::Scripts.render('delete', path: path)
         @service.powershell(script)[:exitcode] == 0
       end
 
@@ -65,15 +60,12 @@ module WinRM
       # @param [String] The full path to write the file to locally
       def download(remote_path, local_path)
         @logger.debug("downloading: #{remote_path} -> #{local_path}")
-        script = FileManager.download_script(remote_path)
-
+        script = WinRM::FS::Scripts.render('download', path: remote_path)
         output = @service.powershell(script)
         return false if output[:exitcode] != 0
-
         contents = output.stdout.gsub('\n\r', '')
         out = Base64.decode64(contents)
         IO.binwrite(local_path, out)
-
         true
       end
 
@@ -82,10 +74,7 @@ module WinRM
       # @return [Boolean] True if the file/dir exists, otherwise false.
       def exists?(path)
         @logger.debug("exists?: #{path}")
-        script = <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{path}')
-          if (test-path $path) { exit 0 } else { exit 1 }
-        EOH
+        script = WinRM::FS::Scripts.render('exists', path: path)
         @service.powershell(script)[:exitcode] == 0
       end
 
@@ -118,56 +107,16 @@ module WinRM
         @logger.debug("uploading: #{local_paths} -> #{remote_path}")
         local_paths = [local_paths] if local_paths.is_a? String
 
+        upload_orchestrator = WinRM::FS::Core::UploadOrchestrator.new(@service)
         if FileManager.src_is_single_file?(local_paths)
-          upload_file(local_paths[0], remote_path, &block)
+          upload_orchestrator.upload_file(local_paths[0], remote_path, &block)
         else
-          upload_multiple_files(local_paths, remote_path, &block)
+          upload_orchestrator.upload_directory(local_paths, remote_path, &block)
         end
-      end
-
-      private
-
-      def upload_file(src_file, remote_path, &block)
-        # If the src has a file extension and the destination does not
-        # we can assume the caller specified the dest as a directory
-        if File.extname(src_file) != '' && File.extname(remote_path) == ''
-          remote_path = File.join(remote_path, File.basename(src_file))
-        end
-
-        # Upload the single file and decode on the target
-        remote_file = WinRM::FS::Core::RemoteFile.single_remote_file(@service)
-        remote_file.upload(src_file, remote_path, &block)
-      end
-
-      def upload_multiple_files(local_paths, remote_path, &block)
-        temp_zip = FileManager.create_temp_zip_file(local_paths)
-
-        # Upload and extract the zip file on the target
-        remote_file = WinRM::FS::Core::RemoteFile.multi_remote_file(@service)
-        remote_file.upload(temp_zip.path, remote_path, &block)
-      ensure
-        temp_zip.delete if temp_zip
-      end
-
-      def self.create_temp_zip_file(local_paths)
-        temp_zip = WinRM::FS::Core::TempZipFile.new
-        local_paths.each { |p| temp_zip.add(p) }
-        temp_zip
       end
 
       def self.src_is_single_file?(local_paths)
         local_paths.count == 1 && File.file?(local_paths[0])
-      end
-
-      def self.download_script(remote_path)
-        <<-EOH
-          $path = [System.IO.Path]::GetFullPath('#{remote_path}')
-          if (test-path $path) {
-            [System.convert]::ToBase64String([System.IO.File]::ReadAllBytes($path))
-            exit 0
-          }
-          exit 1
-        EOH
       end
     end
   end

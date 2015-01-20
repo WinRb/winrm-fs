@@ -1,0 +1,8 @@
+$p = $ExecutionContext.SessionState.Path
+$path = $p.GetUnresolvedProviderPathFromPSPath("<%= path %>")
+if (Test-Path $path) {
+  exit 0
+}
+else {
+  exit 1
+}
