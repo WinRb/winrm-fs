@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+require 'English'
 require 'zip'
 require 'fileutils'
 
@@ -28,15 +29,6 @@ module WinRM
           @options = options
           @zip_file = options.delete(:zip_file) || Tempfile.new(['winrm_upload', '.zip'])
           @path = Pathname(@zip_file)
-          factory = case options.delete(:via)
-          when nil, :rubyzip
-            RubyZipFactory
-          when :shell
-            ShellZipFactory
-          else
-            fail "Unknown zip factory: #{factory}"
-          end
-
           yield self if block_given?
           factory.new(self).build
           @zip_file
@@ -59,8 +51,22 @@ module WinRM
         def delete
           @zip_file.delete
         end
+
+        private
+
+        def factory
+          @factory ||= case options.delete(:via)
+                       when nil, :rubyzip
+                         RubyZipFactory
+                       when :shell
+                         ShellZipFactory
+                       else
+                         fail "Unknown zip factory: #{factory}"
+                       end
+        end
       end
 
+      # Creates a zip file by shelling out to the zip command
       class ShellZipFactory
         attr_reader :zip_definition, :basedir, :zip_file, :paths, :options
 
@@ -69,30 +75,41 @@ module WinRM
           @zip_file = zip_definition.zip_file
           @basedir = zip_definition.basedir
           @paths = zip_definition.paths
-          @options = zip_definition.options.map do | key, value |
+          @options = build_options.push('--names-stdin').join(' ')
+        end
+
+        def build
+          Dir.chdir(basedir) do
+            # zip doesn't like the file that already exists
+            output = `zip #{zip_definition.path}.tmp #{options} < #{write_file_list.path}`
+            fail "zip command failed: #{output}" unless $CHILD_STATUS.success?
+
+            FileUtils.mv("#{zip_definition.path}.tmp", "#{zip_definition.path}")
+          end
+        end
+
+        private
+
+        def write_file_list
+          file_list = Tempfile.new('file_list')
+          file_list.puts paths.join("\n")
+          file_list.close
+          file_list
+        end
+
+        def build_options
+          zip_definition.options.map do | key, value |
             prefix = key.length > 1 ? '--' : '-'
             if value == true
               "#{prefix}#{key}"
             else
               "#{prefix}#{key} #{value}"
             end
-          end.join(' ')
-        end
-
-        def build
-          Dir.chdir(basedir) do
-            file_list = Tempfile.new('file_list')
-            file_list.puts paths.join("\n")
-            file_list.close
-            # We need to use the .tmp file because Tempfile creates a blank file, which zip doesn't like
-            output = `zip #{zip_definition.path}.tmp --names-stdin #{options} < #{file_list.path}`
-            fail "zip command failed: #{output}" unless $?.success?
-
-            FileUtils.mv("#{zip_definition.path}.tmp", "#{zip_definition.path}")
           end
         end
       end
 
+      # Creates a zip file using RubyZip
       class RubyZipFactory
         attr_reader :zip_definition, :basedir
 
@@ -135,7 +152,7 @@ module WinRM
           write_zip_entry(file, basedir)
         end
 
-        def write_zip_entry(file, file_entry_path)
+        def write_zip_entry(file, _file_entry_path)
           absolute_file = File.expand_path(file, basedir)
           relative_file = Pathname(absolute_file).relative_path_from(basedir).to_s
           entry = new_zip_entry(relative_file)
