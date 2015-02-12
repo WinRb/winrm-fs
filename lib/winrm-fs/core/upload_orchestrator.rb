@@ -108,9 +108,11 @@ module WinRM
         end
 
         def create_temp_zip_file(local_paths)
-          temp_zip = WinRM::FS::Core::TempZipFile.new
-          local_paths.each { |p| temp_zip.add(p) }
-          temp_zip
+          WinRM::FS::Core::TempZipFile.new do |temp_zip|
+            local_paths.each do |p|
+              temp_zip.add(p)
+            end
+          end
         end
       end
     end

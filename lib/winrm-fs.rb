@@ -16,6 +16,7 @@
 
 require 'winrm'
 require 'logger'
+require 'pathname'
 require_relative 'winrm-fs/exceptions'
 require_relative 'winrm-fs/file_manager'
 
