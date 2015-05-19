@@ -10,11 +10,15 @@ require 'winrm-fs'
 
 service = WinRM::WinRMWebService.new(...
 file_manager = WinRM::FS::FileManager.new(service)
-file_manager.upload('c:/dev/my_dir', '$env:AppData')
-```
-Or an array of several files and/or directories can be included:
-```ruby
-file_manager.upload(['c:/dev/file1.txt','c:/dev/dir1'], '$env:AppData')
+
+# upload file.txt from the current working directory
+file_manager.upload('file.txt', 'c:/file.txt')
+
+# upload the entire contents of my_dir to c:/foo/my_dir
+file_manager.upload('/Users/sneal/my_dir', 'c:/foo/my_dir')
+
+# upload the entire directory contents of foo to c:\program files\bar
+file_manager.upload('/Users/sneal/foo', '$env:ProgramFiles/bar')
 ```
 
 ### Handling progress events

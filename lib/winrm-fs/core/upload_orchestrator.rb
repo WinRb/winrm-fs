@@ -42,8 +42,8 @@ module WinRM
           end
         end
 
-        def upload_directory(local_paths, remote_path)
-          with_local_zip(local_paths) do |local_zip|
+        def upload_directory(local_path, remote_path)
+          with_local_zip(local_path) do |local_zip|
             temp_path = temp_file_path(local_zip.path)
             with_command_executor do |cmd_executor|
               return 0 unless out_of_date?(cmd_executor, local_zip.path, temp_path)
@@ -74,8 +74,8 @@ module WinRM
           cmd_executor.close
         end
 
-        def with_local_zip(local_paths)
-          local_zip = create_temp_zip_file(local_paths)
+        def with_local_zip(local_path)
+          local_zip = create_temp_zip_file(local_path)
           yield local_zip
         ensure
           local_zip.delete if local_zip
@@ -107,11 +107,9 @@ module WinRM
           "$env:TEMP/winrm-upload/#{local_checksum(local_path)}#{ext}"
         end
 
-        def create_temp_zip_file(local_paths)
-          zip = WinRM::FS::Core::TempZipFile.new(Dir.pwd, :recurse_paths => true)
-          local_paths.each do |p|
-            zip.add(p)
-          end
+        def create_temp_zip_file(local_path)
+          zip = WinRM::FS::Core::TempZipFile.new(local_path, :recurse_paths => true)
+          zip.add(local_path)
           zip.build
           zip
         end

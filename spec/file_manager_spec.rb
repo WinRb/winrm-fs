@@ -46,23 +46,39 @@ describe WinRM::FS::FileManager, integration: true do
       expect(subject.delete(dest_dir)).to be true
     end
 
-    it 'should upload the file to the specified file' do
+    it 'should upload the specified file' do
       subject.upload(this_file, dest_file)
       expect(subject).to have_created(dest_file).with_content(this_file)
     end
 
-    it 'should upload the file to the specified directory' do
+    it 'should upload to root of the c: drive' do
+      subject.upload(this_file, 'c:/winrmtest.rb')
+      expect(subject).to have_created('c:/winrmtest.rb').with_content(this_file)
+      subject.delete('c:/winrmtest.rb')
+    end
+
+    it 'should upload using relative file path' do
+      subject.upload('./spec/file_manager_spec.rb', dest_file)
+      expect(subject).to have_created(dest_file).with_content(this_file)
+    end
+
+    it 'should upload to the specified directory' do
       subject.upload(this_file, dest_dir)
       expect(subject).to have_created(dest_file).with_content(this_file)
     end
 
-    it 'should upload the file to the specified directory with env var' do
+    it 'should upload to the specified directory with env var' do
       subject.upload(this_file, '$env:Temp')
       expected_dest_file = File.join(subject.temp_dir, File.basename(this_file))
       expect(subject).to have_created(expected_dest_file).with_content(this_file)
     end
 
-    it 'should upload the file to the specified nested directory' do
+    it 'should upload to Program Files sub dir' do
+      subject.upload(this_file, '$env:ProgramFiles/foo')
+      expect(subject).to have_created('c:/Program Files/foo/file_manager_spec.rb').with_content(this_file)
+    end
+
+    it 'should upload to the specified nested directory' do
       dest_sub_dir = File.join(dest_dir, 'subdir')
       dest_sub_dir_file = File.join(dest_sub_dir, File.basename(this_file))
       subject.upload(this_file, dest_sub_dir)
@@ -80,13 +96,13 @@ describe WinRM::FS::FileManager, integration: true do
       expect(total).to be > 0
     end
 
-    it 'should not upload the file when content matches' do
+    it 'should not upload when content matches' do
       subject.upload(this_file, dest_dir)
       bytes_uploaded = subject.upload(this_file, dest_dir)
       expect(bytes_uploaded).to eq 0
     end
 
-    it 'should upload file when content differs' do
+    it 'should upload when content differs' do
       matchers_file = File.join(this_dir, 'matchers.rb')
       subject.upload(matchers_file, dest_file)
       bytes_uploaded = subject.upload(this_file, dest_file)
@@ -124,7 +140,7 @@ describe WinRM::FS::FileManager, integration: true do
       expect(bytes_uploaded).to be > 0
       
       Dir.glob(winrm_fs_dir + '/**/*.rb').each do |host_file|
-        host_file_rel = Pathname.new(host_file).relative_path_from(Pathname.new(root_dir)).to_s
+        host_file_rel = Pathname.new(host_file).relative_path_from(Pathname.new(winrm_fs_dir)).to_s
         remote_file = File.join(dest_dir, host_file_rel)
         expect(subject).to have_created(remote_file).with_content(host_file)
       end
