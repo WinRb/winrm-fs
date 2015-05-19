@@ -6,7 +6,7 @@ describe WinRM::FS::Core::TempZipFile, integration: true do
   let(:temp_zip_file_spec) { __FILE__ }
   let(:spec_helper) { File.expand_path('spec_helper.rb', File.dirname(__FILE__)) }
 
-  subject { WinRM::FS::Core::TempZipFile.new() }
+  subject { WinRM::FS::Core::TempZipFile.new }
 
   context 'temp file creation' do
     it 'should create a temp file on disk' do
@@ -43,7 +43,7 @@ describe WinRM::FS::Core::TempZipFile, integration: true do
     end
 
     it 'should add all files in directory to the zip recursively' do
-      subject = WinRM::FS::Core::TempZipFile.new(Dir.pwd, :recurse_paths => true)
+      subject = WinRM::FS::Core::TempZipFile.new(Dir.pwd, recurse_paths: true)
       subject.add(winrm_fs_dir)
       subject.build
       expect(subject).to contain_zip_entries([

@@ -33,7 +33,7 @@ module WinRM
           @basedir = Pathname.new(basedir)
           @options = options
           @zip_file = options[:zip_file] || Tempfile.new(['winrm_upload', '.zip'])
-          @path = Pathname.new(@zip_file)         
+          @path = Pathname.new(@zip_file)
         end
 
         # Adds a file or directory to the temporary zip file

@@ -75,7 +75,8 @@ describe WinRM::FS::FileManager, integration: true do
 
     it 'should upload to Program Files sub dir' do
       subject.upload(this_file, '$env:ProgramFiles/foo')
-      expect(subject).to have_created('c:/Program Files/foo/file_manager_spec.rb').with_content(this_file)
+      expect(subject).to have_created('c:/Program Files/foo/file_manager_spec.rb') \
+        .with_content(this_file)
     end
 
     it 'should upload to the specified nested directory' do
@@ -138,7 +139,7 @@ describe WinRM::FS::FileManager, integration: true do
     it 'copies the entire directory recursively' do
       bytes_uploaded = subject.upload(winrm_fs_dir, dest_dir)
       expect(bytes_uploaded).to be > 0
-      
+
       Dir.glob(winrm_fs_dir + '/**/*.rb').each do |host_file|
         host_file_rel = Pathname.new(host_file).relative_path_from(Pathname.new(winrm_fs_dir)).to_s
         remote_file = File.join(dest_dir, host_file_rel)
