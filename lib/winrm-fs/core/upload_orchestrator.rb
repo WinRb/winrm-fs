@@ -108,7 +108,7 @@ module WinRM
         end
 
         def create_temp_zip_file(local_paths)
-          zip = WinRM::FS::Core::TempZipFile.new
+          zip = WinRM::FS::Core::TempZipFile.new(Dir.pwd, :recurse_paths => true)
           local_paths.each do |p|
             zip.add(p)
           end
