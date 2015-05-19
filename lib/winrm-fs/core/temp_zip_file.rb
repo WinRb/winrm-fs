@@ -17,6 +17,7 @@
 require 'English'
 require 'zip'
 require 'fileutils'
+require 'pathname'
 
 module WinRM
   module FS
@@ -29,10 +30,10 @@ module WinRM
         # @param [String] Base directory to use when expanding out files passed to add
         # @param [Hash] Options: zip_file, via, recurse_paths
         def initialize(basedir = Dir.pwd, options = {})
-          @basedir = Pathname(basedir)
+          @basedir = Pathname.new(basedir)
           @options = options
           @zip_file = options[:zip_file] || Tempfile.new(['winrm_upload', '.zip'])
-          @path = Pathname(@zip_file)         
+          @path = Pathname.new(@zip_file)         
         end
 
         # Adds a file or directory to the temporary zip file
@@ -41,7 +42,7 @@ module WinRM
           new_paths.each do | path |
             absolute_path = File.expand_path(path, basedir)
             fail "#{path} must exist relative to #{basedir}" unless File.exist? absolute_path
-            paths << Pathname(absolute_path).relative_path_from(basedir)
+            paths << Pathname.new(absolute_path).relative_path_from(basedir)
           end
         end
 
@@ -162,7 +163,7 @@ module WinRM
 
         def write_zip_entry(file, _file_entry_path)
           absolute_file = File.expand_path(file, basedir)
-          relative_file = Pathname(absolute_file).relative_path_from(basedir).to_s
+          relative_file = Pathname.new(absolute_file).relative_path_from(basedir).to_s
           entry = new_zip_entry(relative_file)
           @zip.add(entry, absolute_file)
         end
