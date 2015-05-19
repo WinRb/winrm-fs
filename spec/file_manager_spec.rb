@@ -119,7 +119,7 @@ describe WinRM::FS::FileManager, integration: true do
       expect(bytes_uploaded).to be > 0
       Dir.glob(src_dir + '/*.rb').each do |host_file|
         host_file_rel = host_file[src_dir.length..-1]
-        remote_file = File.join(dest_dir, host_file_rel)
+        remote_file = File.join(dest_dir, 'spec', host_file_rel)
         expect(subject).to have_created(remote_file).with_content(host_file)
       end
     end
