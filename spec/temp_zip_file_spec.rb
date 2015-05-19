@@ -1,13 +1,12 @@
 # encoding: UTF-8
-require 'zip'
 require_relative '../lib/winrm-fs/core/temp_zip_file'
 
 describe WinRM::FS::Core::TempZipFile, integration: true do
-  let(:src_dir) { File.expand_path('../lib/winrm-fs', File.dirname(__FILE__)) }
-  let(:src_file) { __FILE__ }
+  let(:winrm_fs_dir) { File.expand_path('../lib/winrm-fs', File.dirname(__FILE__)) }
+  let(:temp_zip_file_spec) { __FILE__ }
+  let(:spec_helper) { File.expand_path('spec_helper.rb', File.dirname(__FILE__)) }
 
-  subject { WinRM::FS::Core::TempZipFile.new }
-  after(:each) { subject.delete }
+  subject { WinRM::FS::Core::TempZipFile.new() }
 
   context 'temp file creation' do
     it 'should create a temp file on disk' do
@@ -17,55 +16,40 @@ describe WinRM::FS::Core::TempZipFile, integration: true do
     end
   end
 
-  context 'add_file' do
+  context 'create zip' do
     it 'should raise error when file doesn not exist' do
-      expect { subject.add_file('/etc/foo/does/not/exist') }.to \
-        raise_error('/etc/foo/does/not/exist isn\'t a file')
-    end
-
-    it 'should raise error when file is a directory' do
-      dir = File.dirname(subject.path)
-      expect { subject.add_file(dir) }.to \
-        raise_error("#{dir} isn\'t a file")
+      expect { subject.add('/etc/foo/does/not/exist') }.to raise_error
     end
 
     it 'should add a file to the zip' do
-      subject.add_file(src_file)
-      expect(subject).to contain_zip_entries(File.basename(src_file))
-    end
-  end
-
-  context 'add_directory' do
-    it 'should raise error when directory does not exist' do
-      expect { subject.add_directory('/etc/does/not/exist') }.to \
-        raise_error('/etc/does/not/exist isn\'t a directory')
+      subject.add(temp_zip_file_spec)
+      subject.build
+      expect(subject).to contain_zip_entries('spec/temp_zip_file_spec.rb')
     end
 
-    it 'should raise error when directory is a file' do
-      expect { subject.add_directory(subject.path) }.to \
-        raise_error("#{subject.path} isn\'t a directory")
+    it 'should add multiple files to the zip' do
+      subject.add(temp_zip_file_spec)
+      subject.add(spec_helper)
+      subject.build
+      expect(subject).to contain_zip_entries([
+        'spec/temp_zip_file_spec.rb',
+        'spec/spec_helper.rb'])
+    end
+
+    it 'should add all files in directory' do
+      subject.add(winrm_fs_dir)
+      subject.build
+      expect(subject).to contain_zip_entries('lib/winrm-fs/exceptions.rb')
     end
 
     it 'should add all files in directory to the zip recursively' do
-      subject.add_directory(src_dir)
-      expect(subject).to contain_zip_entries(['exceptions.rb', 'core/temp_zip_file.rb'])
-    end
-  end
-
-  context 'add' do
-    it 'should add all files when given a directory' do
-      subject.add(src_dir)
-      expect(subject).to contain_zip_entries(['exceptions.rb', 'core/temp_zip_file.rb'])
-    end
-
-    it 'should add a file when given only a file' do
-      subject.add(src_file)
-      expect(subject).to contain_zip_entries(File.basename(src_file))
-    end
-
-    it 'should raise error when given a non-path' do
-      expect { subject.add('garbage') }.to \
-        raise_error("garbage doesn't exist")
+      subject = WinRM::FS::Core::TempZipFile.new(Dir.pwd, :recurse_paths => true)
+      subject.add(winrm_fs_dir)
+      subject.build
+      expect(subject).to contain_zip_entries([
+        'lib/winrm-fs/exceptions.rb',
+        'lib/winrm-fs/core/temp_zip_file.rb',
+        'lib/winrm-fs/scripts/checksum.ps1.erb'])
     end
   end
 end
