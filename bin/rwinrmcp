@@ -36,7 +36,7 @@ def parse_options
   fail "Cannot find source file: #{options[:source_path]}" unless \
     File.exist?(options[:source_path])
 
-  m = /^(?<user>\w+)@{1}(?<host>[a-zA-Z0-9\.]+)(?<port>:[0-9]+)?:{1}(?<file>.+)/.match(ARGV[1])
+  m = /^(?<user>[a-z0-9\.\!\$ _-]+)@{1}(?<host>[a-z0-9\.\-]+)(?<port>:[0-9]+)?:{1}(?<file>.+)/i.match(ARGV[1])
   fail "#{ARGV[1]} is an invalid destination" unless m
   options[:user] = m[:user]
   options[:endpoint] = "http://#{m[:host]}#{m[:port] || ':5985'}/wsman"

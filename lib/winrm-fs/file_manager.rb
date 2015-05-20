@@ -86,16 +86,16 @@ module WinRM
       end
 
       # Upload one or more local files and directories to a remote directory
+      # @example copy a single file to a winrm endpoint
+      #
+      #   file_manager.upload('/Users/sneal/myfile.txt', 'c:/foo/myfile.txt')
+      #
       # @example copy a single directory to a winrm endpoint
       #
       #   file_manager.upload('c:/dev/my_dir', '$env:AppData')
       #
-      # @example copy several paths to the winrm endpoint
-      #
-      #   file_manager.upload(['c:/dev/file1.txt','c:/dev/dir1'], '$env:AppData')
-      #
-      # @param [Array<String>] One or more paths that will be copied to the remote path.
-      #   These can be files or directories to be deeply copied
+      # @param [String] A path to a local directory or file that will be copied
+      #   to the remote Windows box.
       # @param [String] The target directory or file
       #   This path may contain powershell style environment variables
       # @yieldparam [Fixnum] Number of bytes copied in current payload sent to the winrm endpoint
@@ -103,20 +103,15 @@ module WinRM
       # @yieldparam [String] Path of file being copied
       # @yieldparam [String] Target path on the winrm endpoint
       # @return [Fixnum] The total number of bytes copied
-      def upload(local_paths, remote_path, &block)
-        @logger.debug("uploading: #{local_paths} -> #{remote_path}")
-        local_paths = [local_paths] if local_paths.is_a? String
+      def upload(local_path, remote_path, &block)
+        @logger.debug("uploading: #{local_path} -> #{remote_path}")
 
         upload_orchestrator = WinRM::FS::Core::UploadOrchestrator.new(@service)
-        if FileManager.src_is_single_file?(local_paths)
-          upload_orchestrator.upload_file(local_paths[0], remote_path, &block)
+        if File.file?(local_path)
+          upload_orchestrator.upload_file(local_path, remote_path, &block)
         else
-          upload_orchestrator.upload_directory(local_paths, remote_path, &block)
+          upload_orchestrator.upload_directory(local_path, remote_path, &block)
         end
-      end
-
-      def self.src_is_single_file?(local_paths)
-        local_paths.count == 1 && File.file?(local_paths[0])
       end
     end
   end

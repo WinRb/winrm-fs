@@ -17,6 +17,7 @@
 require 'English'
 require 'zip'
 require 'fileutils'
+require 'pathname'
 
 module WinRM
   module FS
@@ -24,18 +25,15 @@ module WinRM
       # Temporary zip file on the local system
       class TempZipFile
         attr_reader :zip_file, :path, :paths, :basedir, :options
-        def initialize(basedir = Dir.pwd, options = {})
-          @basedir = Pathname(basedir)
-          @options = options
-          @zip_file = options.delete(:zip_file) || Tempfile.new(['winrm_upload', '.zip'])
-          @path = Pathname(@zip_file)
-          yield self if block_given?
-          factory.new(self).build
-          @zip_file
-        end
 
-        def paths
-          @paths ||= []
+        # Creates a new local temporary zip file
+        # @param [String] Base directory to use when expanding out files passed to add
+        # @param [Hash] Options: zip_file, via, recurse_paths
+        def initialize(basedir = Dir.pwd, options = {})
+          @basedir = Pathname.new(basedir)
+          @options = options
+          @zip_file = options[:zip_file] || Tempfile.new(['winrm_upload', '.zip'])
+          @path = Pathname.new(@zip_file)
         end
 
         # Adds a file or directory to the temporary zip file
@@ -44,18 +42,26 @@ module WinRM
           new_paths.each do | path |
             absolute_path = File.expand_path(path, basedir)
             fail "#{path} must exist relative to #{basedir}" unless File.exist? absolute_path
-            paths << Pathname(absolute_path).relative_path_from(basedir)
+            paths << Pathname.new(absolute_path).relative_path_from(basedir)
           end
+        end
+
+        def paths
+          @paths ||= []
         end
 
         def delete
           @zip_file.delete
         end
 
+        def build
+          factory.new(self).build
+        end
+
         private
 
         def factory
-          @factory ||= case options.delete(:via)
+          @factory ||= case options[:via]
                        when nil, :rubyzip
                          RubyZipFactory
                        when :shell
@@ -124,7 +130,7 @@ module WinRM
             absolute_path = File.expand_path(path, basedir)
             fail "#{path} doesn't exist" unless File.exist? absolute_path
 
-            if File.directory?(absolute_path) && zip_definition.options[:recurse_paths]
+            if File.directory?(absolute_path)
               add_directory(path)
             else
               add_file(path)
@@ -142,7 +148,10 @@ module WinRM
         # Adds all files in the specified directory recursively into the zip file
         # @param [String] Directory to add into zip
         def add_directory(dir)
-          glob = File.join(basedir, dir, '**/*')
+          glob_pattern = '*'
+          glob_pattern = '**/*' if zip_definition.options[:recurse_paths]
+
+          glob = File.join(basedir, dir, glob_pattern)
           Dir.glob(glob).each do |file|
             add_file(file)
           end
@@ -154,7 +163,7 @@ module WinRM
 
         def write_zip_entry(file, _file_entry_path)
           absolute_file = File.expand_path(file, basedir)
-          relative_file = Pathname(absolute_file).relative_path_from(basedir).to_s
+          relative_file = Pathname.new(absolute_file).relative_path_from(basedir).to_s
           entry = new_zip_entry(relative_file)
           @zip.add(entry, absolute_file)
         end
