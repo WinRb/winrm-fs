@@ -30,6 +30,22 @@ file_manager.upload('c:/dev/my_dir', '$env:AppData') do |bytes_copied, total_byt
 end
 ```
 
+## Troubleshooting
+
+If you're having trouble, first of all its most likely a network or WinRM configuration
+issue. Take a look at the [WinRM gem troubleshooting](https://github.com/WinRb/WinRM#troubleshooting)
+first.
+
+The most [common error](https://github.com/WinRb/winrm-fs/issues/1) with this gem is getting a 500 error because your maxConcurrentOperationsPerUser limit has been reached.
+
+```
+The WS-Management service cannot process the request. This user is allowed a
+maximum number of 1500 concurrent operations, which has been exceeded. Close
+existing operations for this user, or raise the quota for this user.
+```
+
+You can workaround this by increasing your operations per user quota.
+
 ## Contributing
 
 1. Fork it.
