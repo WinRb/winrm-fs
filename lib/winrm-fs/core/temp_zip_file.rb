@@ -33,6 +33,7 @@ module WinRM
           @basedir = Pathname.new(basedir)
           @options = options
           @zip_file = options[:zip_file] || Tempfile.new(['winrm_upload', '.zip'])
+          @zip_file.close unless @zip_file.respond_to?('closed?') && @zip_file.closed?
           @path = Pathname.new(@zip_file)
         end
 
