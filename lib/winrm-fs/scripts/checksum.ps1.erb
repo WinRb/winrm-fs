@@ -9,5 +9,5 @@ if (Test-Path $path -PathType Leaf) {
   $md5 = $md5.Replace("-","").ToLower()
   $file.Close()
 
-  Write-Host $md5
+  Write-Output $md5
 }
