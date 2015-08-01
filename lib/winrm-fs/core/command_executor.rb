@@ -35,7 +35,7 @@ module WinRM
 
         def run_powershell(script)
           assert_shell_is_open
-          run_cmd('powershell', ['-encodedCommand', encode_script(script)])
+          run_cmd('powershell', ['-encodedCommand', encode_script(safe_script(script))])
         end
 
         def run_cmd(command, arguments = [])
@@ -62,6 +62,11 @@ module WinRM
         def encode_script(script)
           encoded_script = script.encode('UTF-16LE', 'UTF-8')
           Base64.strict_encode64(encoded_script)
+        end
+
+        # suppress the progress stream from leaking to stderr
+        def safe_script(script)
+          "$ProgressPreference='SilentlyContinue';" + script
         end
       end
     end
