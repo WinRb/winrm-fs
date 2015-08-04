@@ -1,5 +1,8 @@
 # WinRM-fs Gem Changelog
 
+# 0.2.2
+- Fix powershell streams leaking to standard error breaking Windows 10, issue #18
+
 # 0.2.1
 - Fixed issue 16 creating zip file on Windows
 
