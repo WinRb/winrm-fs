@@ -87,13 +87,15 @@ describe WinRM::FS::FileManager, integration: true do
     end
 
     it 'yields progress data' do
+      yielded_bytes = 0
       total = subject.upload(this_file, dest_file) do \
         |bytes_copied, total_bytes, local_path, remote_path|
-        expect(total_bytes).to be > 0
+        yielded_bytes = total_bytes
         expect(bytes_copied).to eq(total_bytes)
         expect(local_path).to eq(this_file)
         expect(remote_path).to eq(dest_file)
       end
+      expect(yielded_bytes).to be > 0
       expect(total).to be > 0
     end
 

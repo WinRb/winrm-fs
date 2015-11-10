@@ -1,5 +1,8 @@
 # WinRM-fs Gem Changelog
 
+# 0.2.3
+- Fix yielding progress data, issue #23
+
 # 0.2.2
 - Fix powershell streams leaking to standard error breaking Windows 10, issue #18
 
