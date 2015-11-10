@@ -32,7 +32,7 @@ module WinRM
         # @return [Integer] Count of bytes uploaded
         def upload(local_file, remote_file)
           @command_executor.run_powershell(prepare_script(remote_file))
-          do_upload(local_file, dos_path(remote_file))
+          do_upload(local_file, dos_path(remote_file)) { |*args| yield(*args) if block_given? }
         end
 
         private

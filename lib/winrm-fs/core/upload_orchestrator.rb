@@ -38,7 +38,9 @@ module WinRM
           temp_path = temp_file_path(local_path)
           with_command_executor do |cmd_executor|
             return 0 unless out_of_date?(cmd_executor, local_path, remote_path)
-            do_file_upload(cmd_executor, local_path, temp_path, remote_path)
+            do_file_upload(cmd_executor, local_path, temp_path, remote_path) do |*args|
+              yield(*args) if block_given?
+            end
           end
         end
 
@@ -47,7 +49,9 @@ module WinRM
             temp_path = temp_file_path(local_zip.path)
             with_command_executor do |cmd_executor|
               return 0 unless out_of_date?(cmd_executor, local_zip.path, temp_path)
-              do_file_upload(cmd_executor, local_zip.path, temp_path, remote_path)
+              do_file_upload(cmd_executor, local_zip.path, temp_path, remote_path) do |*args|
+                yield(*args) if block_given?
+              end
             end
           end
         end

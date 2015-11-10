@@ -103,14 +103,13 @@ module WinRM
       # @yieldparam [String] Path of file being copied
       # @yieldparam [String] Target path on the winrm endpoint
       # @return [Fixnum] The total number of bytes copied
-      def upload(local_path, remote_path, &block)
+      def upload(local_path, remote_path)
         @logger.debug("uploading: #{local_path} -> #{remote_path}")
 
         upload_orchestrator = WinRM::FS::Core::UploadOrchestrator.new(@service)
-        if File.file?(local_path)
-          upload_orchestrator.upload_file(local_path, remote_path, &block)
-        else
-          upload_orchestrator.upload_directory(local_path, remote_path, &block)
+        method = File.file?(local_path) ? :upload_file : :upload_directory
+        upload_orchestrator.send(method, local_path, remote_path) do |*args|
+          yield(*args) if block_given?
         end
       end
     end
