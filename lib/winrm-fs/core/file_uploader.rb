@@ -30,14 +30,14 @@ module WinRM
         # @param [String] Path to the local source file on this machine
         # @param [String] Path to the file on the target machine
         # @return [Integer] Count of bytes uploaded
-        def upload(local_file, remote_file)
+        def upload(local_file, remote_file, &block)
           @command_executor.run_powershell(prepare_script(remote_file))
-          do_upload(local_file, dos_path(remote_file))
+          do_upload(local_file, dos_path(remote_file), &block)
         end
 
         private
 
-        def do_upload(local_file, remote_file)
+        def do_upload(local_file, remote_file, &block)
           bytes_copied = 0
           base64_array = base64_content(local_file)
           base64_array.each_slice(8000 - remote_file.size) do |chunk|

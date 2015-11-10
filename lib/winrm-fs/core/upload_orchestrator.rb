@@ -29,7 +29,7 @@ module WinRM
           @logger = Logging.logger[self]
         end
 
-        def upload_file(local_path, remote_path)
+        def upload_file(local_path, remote_path, &block)
           # If the src has a file extension and the destination does not
           # we can assume the caller specified the dest as a directory
           if File.extname(local_path) != '' && File.extname(remote_path) == ''
@@ -38,23 +38,23 @@ module WinRM
           temp_path = temp_file_path(local_path)
           with_command_executor do |cmd_executor|
             return 0 unless out_of_date?(cmd_executor, local_path, remote_path)
-            do_file_upload(cmd_executor, local_path, temp_path, remote_path)
+            do_file_upload(cmd_executor, local_path, temp_path, remote_path, &block)
           end
         end
 
-        def upload_directory(local_path, remote_path)
+        def upload_directory(local_path, remote_path, &block)
           with_local_zip(local_path) do |local_zip|
             temp_path = temp_file_path(local_zip.path)
             with_command_executor do |cmd_executor|
               return 0 unless out_of_date?(cmd_executor, local_zip.path, temp_path)
-              do_file_upload(cmd_executor, local_zip.path, temp_path, remote_path)
+              do_file_upload(cmd_executor, local_zip.path, temp_path, remote_path, &block)
             end
           end
         end
 
         private
 
-        def do_file_upload(cmd_executor, local_path, temp_path, remote_path)
+        def do_file_upload(cmd_executor, local_path, temp_path, remote_path, &block)
           file_uploader = WinRM::FS::Core::FileUploader.new(cmd_executor)
           bytes = file_uploader.upload(local_path, temp_path) do |bytes_copied, total_bytes|
             yield bytes_copied, total_bytes, local_path, remote_path if block_given?
