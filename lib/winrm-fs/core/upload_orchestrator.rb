@@ -54,7 +54,7 @@ module WinRM
 
         private
 
-        def do_file_upload(cmd_executor, local_path, temp_path, remote_path, &block)
+        def do_file_upload(cmd_executor, local_path, temp_path, remote_path)
           file_uploader = WinRM::FS::Core::FileUploader.new(cmd_executor)
           bytes = file_uploader.upload(local_path, temp_path) do |bytes_copied, total_bytes|
             yield bytes_copied, total_bytes, local_path, remote_path if block_given?

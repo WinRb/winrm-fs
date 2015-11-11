@@ -37,7 +37,7 @@ module WinRM
 
         private
 
-        def do_upload(local_file, remote_file, &block)
+        def do_upload(local_file, remote_file)
           bytes_copied = 0
           base64_array = base64_content(local_file)
           base64_array.each_slice(8000 - remote_file.size) do |chunk|
