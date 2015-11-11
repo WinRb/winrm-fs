@@ -30,9 +30,9 @@ module WinRM
         # @param [String] Path to the local source file on this machine
         # @param [String] Path to the file on the target machine
         # @return [Integer] Count of bytes uploaded
-        def upload(local_file, remote_file)
+        def upload(local_file, remote_file, &block)
           @command_executor.run_powershell(prepare_script(remote_file))
-          do_upload(local_file, dos_path(remote_file))
+          do_upload(local_file, dos_path(remote_file), &block)
         end
 
         private
