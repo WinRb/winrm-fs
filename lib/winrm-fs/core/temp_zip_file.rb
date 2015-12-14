@@ -124,6 +124,7 @@ module WinRM
           @zip_definition = zip_definition
           @basedir = zip_definition.basedir
           @zip = Zip::File.open(zip_definition.path, Zip::File::CREATE)
+          @logger = Logging.logger[self]
         end
 
         def build
@@ -159,6 +160,7 @@ module WinRM
         end
 
         def add_file(file)
+          @logger.debug("Adding file to zip: #{file}")
           write_zip_entry(file, basedir)
         end
 
