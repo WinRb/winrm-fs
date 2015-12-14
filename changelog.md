@@ -1,5 +1,8 @@
 # WinRM-fs Gem Changelog
 
+# 0.2.4
+- Fix issue 21, downloading files is extremely slow.
+
 # 0.2.3
 - Fix yielding progress data, issue #23
 
