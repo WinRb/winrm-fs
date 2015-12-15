@@ -2,6 +2,7 @@
 
 # 0.2.4
 - Fix issue 21, downloading files is extremely slow.
+- Add zip file creation debug logging.
 
 # 0.2.3
 - Fix yielding progress data, issue #23
