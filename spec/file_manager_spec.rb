@@ -35,7 +35,7 @@ describe WinRM::FS::FileManager, integration: true do
 
   context 'temp_dir' do
     it 'should return the remote users temp dir' do
-      expect(subject.temp_dir).to match(%r{C:/Users/\w+/AppData/Local/Temp})
+      expect(subject.temp_dir).to match(%r{C:/Users/\S+/AppData/Local/Temp})
     end
   end
 
