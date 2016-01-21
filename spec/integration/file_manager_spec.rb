@@ -1,10 +1,10 @@
 # encoding: UTF-8
 require 'pathname'
 
-describe WinRM::FS::FileManager, integration: true do
+describe WinRM::FS::FileManager do
   let(:dest_dir) { File.join(subject.temp_dir, "winrm_#{rand(2**16)}") }
   let(:temp_upload_dir) { '$env:TEMP/winrm-upload' }
-  let(:this_dir) { File.expand_path(File.dirname(__FILE__)) }
+  let(:spec_dir) { File.expand_path(File.dirname(File.dirname(__FILE__))) }
   let(:this_file) { __FILE__ }
   let(:service) { winrm_connection }
 
@@ -58,7 +58,7 @@ describe WinRM::FS::FileManager, integration: true do
     end
 
     it 'should upload using relative file path' do
-      subject.upload('./spec/file_manager_spec.rb', dest_file)
+      subject.upload('./spec/integration/file_manager_spec.rb', dest_file)
       expect(subject).to have_created(dest_file).with_content(this_file)
     end
 
@@ -88,14 +88,16 @@ describe WinRM::FS::FileManager, integration: true do
 
     it 'yields progress data' do
       block_called = false
+      total_bytes_copied = 0
       total = subject.upload(this_file, dest_file) do \
         |bytes_copied, total_bytes, local_path, remote_path|
         expect(total_bytes).to be > 0
-        expect(bytes_copied).to eq(total_bytes)
+        total_bytes_copied = bytes_copied
         expect(local_path).to eq(this_file)
         expect(remote_path).to eq(dest_file)
         block_called = true
       end
+      expect(total_bytes_copied).to eq(total)
       expect(block_called).to be true
       expect(total).to be > 0
     end
@@ -107,7 +109,7 @@ describe WinRM::FS::FileManager, integration: true do
     end
 
     it 'should upload when content differs' do
-      matchers_file = File.join(this_dir, 'matchers.rb')
+      matchers_file = File.join(spec_dir, 'matchers.rb')
       subject.upload(matchers_file, dest_file)
       bytes_uploaded = subject.upload(this_file, dest_file)
       expect(bytes_uploaded).to be > 0
@@ -119,32 +121,48 @@ describe WinRM::FS::FileManager, integration: true do
   end
 
   context 'upload empty file' do
-    let(:empty_src_file) { Tempfile.new('empty').path }
+    let(:empty_src_file) { Tempfile.new('empty') }
     let(:dest_file) { File.join(dest_dir, 'emptyfile.txt') }
 
     it 'creates a new empty file' do
-      expect(subject.upload(empty_src_file, dest_file)).to be 0
+      expect(subject.upload(empty_src_file.path, dest_file)).to be 0
       expect(subject).to have_created(dest_file).with_content('')
     end
 
     it 'overwrites an existing file' do
       expect(subject.upload(this_file, dest_file)).to be > 0
-      expect(subject.upload(empty_src_file, dest_file)).to be 0
+      expect(subject.upload(empty_src_file.path, dest_file)).to be 0
       expect(subject).to have_created(dest_file).with_content('')
     end
   end
 
   context 'upload directory' do
-    let(:root_dir) { File.expand_path('../', File.dirname(__FILE__)) }
+    let(:root_dir) { File.expand_path('../../', File.dirname(__FILE__)) }
     let(:winrm_fs_dir) { File.join(root_dir, 'lib/winrm-fs') }
     let(:core_dir) { File.join(root_dir, 'lib/winrm-fs/core') }
 
-    it 'copies the entire directory recursively' do
+    it 'copies the directory contents recursively when directory does not exist' do
       bytes_uploaded = subject.upload(winrm_fs_dir, dest_dir)
       expect(bytes_uploaded).to be > 0
 
       Dir.glob(winrm_fs_dir + '/**/*.rb').each do |host_file|
-        host_file_rel = Pathname.new(host_file).relative_path_from(Pathname.new(winrm_fs_dir)).to_s
+        host_file_rel = Pathname.new(host_file).relative_path_from(
+          Pathname.new(winrm_fs_dir)
+        ).to_s
+        remote_file = File.join(dest_dir, host_file_rel)
+        expect(subject).to have_created(remote_file).with_content(host_file)
+      end
+    end
+
+    it 'copies the directory recursively when directory does exist' do
+      subject.create_dir(dest_dir)
+      bytes_uploaded = subject.upload(winrm_fs_dir, dest_dir)
+      expect(bytes_uploaded).to be > 0
+
+      Dir.glob(winrm_fs_dir + '/**/*.rb').each do |host_file|
+        host_file_rel = Pathname.new(host_file).relative_path_from(
+          Pathname.new(winrm_fs_dir).dirname
+        ).to_s
         remote_file = File.join(dest_dir, host_file_rel)
         expect(subject).to have_created(remote_file).with_content(host_file)
       end
@@ -154,6 +172,14 @@ describe WinRM::FS::FileManager, integration: true do
       subject.upload(winrm_fs_dir, dest_dir)
       bytes_uploaded = subject.upload(winrm_fs_dir, dest_dir)
       expect(bytes_uploaded).to eq 0
+    end
+
+    it 'unzips the directory when cached content is the same' do
+      subject.upload(winrm_fs_dir, dest_dir)
+      subject.delete(dest_dir)
+      expect(subject.exists?(dest_dir)).to be false
+      subject.upload(winrm_fs_dir, dest_dir)
+      expect(subject.exists?(dest_dir)).to be true
     end
 
     it 'copies the directory when content differs' do
