@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+require 'winrm'
 require_relative 'scripts/scripts'
-require_relative 'core/upload_orchestrator'
+require_relative 'core/file_transporter'
 
 module WinRM
   module FS
@@ -25,7 +26,7 @@ module WinRM
       # @param [WinRMWebService] WinRM web service client
       def initialize(service)
         @service = service
-        @logger = Logging.logger[self]
+        @logger = service.logger
       end
 
       # Gets the MD5 checksum of the specified file if it exists,
@@ -34,7 +35,7 @@ module WinRM
       def checksum(path)
         @logger.debug("checksum: #{path}")
         script = WinRM::FS::Scripts.render('checksum', path: path)
-        @service.powershell(script).stdout.chomp
+        @service.create_executor { |e| e.run_powershell_script(script).stdout.chomp }
       end
 
       # Create the specifed directory recursively
@@ -43,7 +44,7 @@ module WinRM
       def create_dir(path)
         @logger.debug("create_dir: #{path}")
         script = WinRM::FS::Scripts.render('create_dir', path: path)
-        @service.powershell(script)[:exitcode] == 0
+        @service.create_executor { |e| e.run_powershell_script(script)[:exitcode] == 0 }
       end
 
       # Deletes the file or directory at the specified path
@@ -52,7 +53,7 @@ module WinRM
       def delete(path)
         @logger.debug("deleting: #{path}")
         script = WinRM::FS::Scripts.render('delete', path: path)
-        @service.powershell(script)[:exitcode] == 0
+        @service.create_executor { |e| e.run_powershell_script(script)[:exitcode] == 0 }
       end
 
       # Downloads the specified remote file to the specified local path
@@ -61,7 +62,7 @@ module WinRM
       def download(remote_path, local_path)
         @logger.debug("downloading: #{remote_path} -> #{local_path}")
         script = WinRM::FS::Scripts.render('download', path: remote_path)
-        output = @service.powershell(script)
+        output = @service.create_executor { |e| e.run_powershell_script(script) }
         return false if output[:exitcode] != 0
         contents = output.stdout.gsub('\n\r', '')
         out = Base64.decode64(contents)
@@ -75,14 +76,16 @@ module WinRM
       def exists?(path)
         @logger.debug("exists?: #{path}")
         script = WinRM::FS::Scripts.render('exists', path: path)
-        @service.powershell(script)[:exitcode] == 0
+        @service.create_executor { |e| e.run_powershell_script(script)[:exitcode] == 0 }
       end
 
       # Gets the current user's TEMP directory on the remote system, for example
       # 'C:/Windows/Temp'
       # @return [String] Full path to the temp directory
       def temp_dir
-        @guest_temp ||= (@service.cmd('echo %TEMP%')).stdout.chomp.gsub('\\', '/')
+        @guest_temp ||= begin
+          (@service.create_executor { |e| e.run_cmd('echo %TEMP%') }).stdout.chomp.gsub('\\', '/')
+        end
       end
 
       # Upload one or more local files and directories to a remote directory
@@ -104,13 +107,9 @@ module WinRM
       # @yieldparam [String] Target path on the winrm endpoint
       # @return [Fixnum] The total number of bytes copied
       def upload(local_path, remote_path, &block)
-        @logger.debug("uploading: #{local_path} -> #{remote_path}")
-
-        upload_orchestrator = WinRM::FS::Core::UploadOrchestrator.new(@service)
-        if File.file?(local_path)
-          upload_orchestrator.upload_file(local_path, remote_path, &block)
-        else
-          upload_orchestrator.upload_directory(local_path, remote_path, &block)
+        @service.create_executor do |executor|
+          file_transporter ||= WinRM::FS::Core::FileTransporter.new(executor)
+          file_transporter.upload(local_path, remote_path, &block)[0]
         end
       end
     end

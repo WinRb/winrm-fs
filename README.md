@@ -4,8 +4,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/wm6apa8ojfhfmwsf?svg=true)](https://ci.appveyor.com/project/winrb/winrm-fs)
 
 ## Uploading files
-Files may be copied from the local machine to the winrm endpoint. Individual
-files or directories may be specified:
+Files may be copied from the local machine to the winrm endpoint. Individual files or directories, as well as arrays of files and directories may be specified:
 ```ruby
 require 'winrm-fs'
 
@@ -15,11 +14,15 @@ file_manager = WinRM::FS::FileManager.new(service)
 # upload file.txt from the current working directory
 file_manager.upload('file.txt', 'c:/file.txt')
 
-# upload the entire contents of my_dir to c:/foo/my_dir
+# upload the my_dir directory to c:/foo/my_dir
 file_manager.upload('/Users/sneal/my_dir', 'c:/foo/my_dir')
 
-# upload the entire directory contents of foo to c:\program files\bar
-file_manager.upload('/Users/sneal/foo', '$env:ProgramFiles/bar')
+# upload multiple directories and a file to c:\programData
+file_manager.upload([
+  '/Users/sneal/foo1',
+  '/Users/sneal/foo2'
+  '/Users/sneal/fluffy.txt'
+], '$env:ProgramData')
 ```
 
 ### Handling progress events
