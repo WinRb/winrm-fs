@@ -1,5 +1,8 @@
 # WinRM-fs Gem Changelog
 
+# 0.3.2
+- Fix re-extraction of cached directories from temp folder when there is more than one "clean" directory deleted from destination
+
 # 0.3.1
 - Widen logging version constraints to include 2.0 (matching WinRM core gem)
 

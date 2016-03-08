@@ -268,11 +268,12 @@ module WinRM
             data['chk_dirty'] == 'True' || data.key?('tmpzip')
           end
 
+          i = 0
           result = file_data.map do |_, data|
             val = { 'dst' => data['dst'] }
             val['tmpzip'] = data['tmpzip'] if data['tmpzip']
 
-            [data['tmpfile'], val]
+            [data['tmpfile'] || "clean#{i += 1}", val]
           end
 
           ps_hash(Hash[result])

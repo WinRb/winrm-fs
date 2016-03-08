@@ -140,6 +140,7 @@ describe WinRM::FS::FileManager do
     let(:root_dir) { File.expand_path('../../', File.dirname(__FILE__)) }
     let(:winrm_fs_dir) { File.join(root_dir, 'lib/winrm-fs') }
     let(:core_dir) { File.join(root_dir, 'lib/winrm-fs/core') }
+    let(:scripts_dir) { File.join(root_dir, 'lib/winrm-fs/scripts') }
 
     it 'copies the directory contents recursively when directory does not exist' do
       bytes_uploaded = subject.upload(winrm_fs_dir, dest_dir)
@@ -180,6 +181,17 @@ describe WinRM::FS::FileManager do
       expect(subject.exists?(dest_dir)).to be false
       subject.upload(winrm_fs_dir, dest_dir)
       expect(subject.exists?(dest_dir)).to be true
+    end
+
+    it 'unzips multiple directories when cached content is the same for all' do
+      subject.create_dir(dest_dir)
+      subject.upload([core_dir, scripts_dir], dest_dir)
+      subject.delete(dest_dir)
+      expect(subject.exists?(dest_dir)).to be false
+      subject.create_dir(dest_dir)
+      subject.upload([core_dir, scripts_dir], dest_dir)
+      expect(subject.exists?(File.join(dest_dir, 'core'))).to be true
+      expect(subject.exists?(File.join(dest_dir, 'scripts'))).to be true
     end
 
     it 'copies the directory when content differs' do
