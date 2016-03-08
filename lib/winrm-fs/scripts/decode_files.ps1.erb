@@ -1,5 +1,4 @@
 trap {$e = $_.Exception; $e.InvocationInfo.ScriptName; do {$e.Message; $e = $e.InnerException} while ($e); break;}
-$progresspreference = 'SilentlyContinue'
 function Decode-Base64File($src, $dst) {folder (split-path $dst);sc -force -Encoding Byte -Path $dst -Value ([Convert]::FromBase64String([IO.File]::ReadAllLines($src)))}
 function Copy-Stream($src, $dst) {$b = New-Object Byte[] 4096; while (($i = $src.Read($b, 0, $b.Length)) -ne 0) { $dst.Write($b, 0, $i) } }
 function Resolve-ProviderPath{ $input | % {if ($_){(Resolve-Path $_).ProviderPath} else{$null}} }
@@ -15,7 +14,7 @@ Function Decode-Files($hash) {
   foreach ($key in $hash.keys) {
     $value = $hash[$key]
     $tmp, $tzip, $dst = $Key, $Value["tmpzip"], $Value["dst"]
-    if($tmp -ne "") {
+    if(!$tmp.StartsWith("clean")) {
       $sMd5 = (gi $tmp).BaseName.Replace("b64-", "")
       $decoded = if ($tzip -ne $null) { $tzip } else { $dst }
       Decode-Base64File $tmp $decoded
