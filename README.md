@@ -26,7 +26,7 @@ file_manager.upload([
 ```
 
 ### Handling progress events
-If you want to implemnt your own custom progress handling, you can pass a code
+If you want to implement your own custom progress handling, you can pass a code
 block and use the proggress data that `upload` yields to this block:
 ```ruby
 file_manager.upload('c:/dev/my_dir', '$env:AppData') do |bytes_copied, total_bytes, local_path, remote_path|
