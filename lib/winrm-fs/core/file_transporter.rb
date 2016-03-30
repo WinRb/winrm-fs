@@ -164,12 +164,6 @@ module WinRM
         def add_file_hash!(hash, local, remote)
           logger.debug "creating hash for file #{remote}"
 
-          # If the src has a file extension and the destination does not
-          # we can assume the caller specified the dest as a directory
-          if File.extname(local) != '' && File.extname(remote) == ''
-            remote = File.join(remote, File.basename(local))
-          end
-
           hash[md5sum(local)] = {
             'src'   => local,
             'dst'   => remote,
@@ -199,9 +193,17 @@ module WinRM
         # @return [String] the inner contents of a PowerShell Hash Table
         # @api private
         def check_files_ps_hash(files)
-          ps_hash(Hash[
-            files.map { |md5, data| [data.fetch('tmpzip', data['dst']), md5] }
-          ])
+          hash = files.map do |md5, data|
+            [
+              md5,
+              {
+                'target' => data.fetch('tmpzip', data['dst']),
+                'src_basename' => File.basename(data['src']),
+                'dst' => data['dst']
+              }
+            ]
+          end
+          ps_hash(Hash[hash])
         end
 
         # Performs any final cleanup on the report Hash and removes any
