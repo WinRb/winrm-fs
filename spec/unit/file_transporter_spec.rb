@@ -73,7 +73,11 @@ describe WinRM::FS::Core::FileTransporter do
       it 'uploads the hash_file in chunks for check_files' do
         hash = outdent!(<<-HASH.chomp)
           @{
-            "#{dst}" = "#{src_md5}"
+            "#{src_md5}" = @{
+              "target" = "#{remote}";
+              "src_basename" = "#{File.basename(local)}";
+              "dst" = "#{remote}"
+            }
           }
         HASH
 
@@ -142,7 +146,7 @@ describe WinRM::FS::Core::FileTransporter do
         hash = outdent!(<<-HASH.chomp)
           @{
             "#{ps_tmpfile}" = @{
-              "dst" = "#{dst}"
+              "dst" = "#{remote}"
             }
           }
         HASH
@@ -351,7 +355,7 @@ describe WinRM::FS::Core::FileTransporter do
         expect(upload[1]).to eq(
           src_md5 => {
             'src'         => local,
-            'dst'         => dst,
+            'dst'         => remote,
             'size'        => size,
             'src_md5'     => src_md5,
             'dst_md5'     => src_md5,
@@ -430,7 +434,11 @@ describe WinRM::FS::Core::FileTransporter do
     it 'uploads the hash_file in chunks for check_files' do
       hash = outdent!(<<-HASH.chomp)
         @{
-          "#{ps_tmpzip}" = "#{src_md5}"
+          "#{src_md5}" = @{
+            "target" = "#{ps_tmpzip}";
+            "src_basename" = "#{File.basename(local)}";
+            "dst" = "#{dst}\\#{File.basename(local)}"
+          }
         }
       HASH
 
@@ -563,7 +571,7 @@ describe WinRM::FS::Core::FileTransporter do
     1.upto(3).each do |i|
       let(:"local#{i}") { create_tempfile("input#{i}.txt", "input#{i}") }
       let(:"src#{i}_md5") { md5sum(send("local#{i}")) }
-      let(:"dst#{i}") { "#{remote}/#{File.basename(send("local#{i}"))}" }
+      let(:"dst#{i}") { "#{remote}" }
       let(:"size#{i}") { File.size(send("local#{i}")) }
       let(:"cmd#{i}_tmpfile") { "%TEMP%\\b64-#{send("src#{i}_md5")}.txt" }
       let(:"ps#{i}_tmpfile") { "$env:TEMP\\b64-#{send("src#{i}_md5")}.txt" }
@@ -618,9 +626,21 @@ describe WinRM::FS::Core::FileTransporter do
     it 'uploads the hash_file in chunks for check_files' do
       hash = outdent!(<<-HASH.chomp)
         @{
-          "#{dst1}" = "#{src1_md5}";
-          "#{dst2}" = "#{src2_md5}";
-          "#{dst3}" = "#{src3_md5}"
+          "#{src1_md5}" = @{
+            "target" = "#{dst1}";
+            "src_basename" = "#{File.basename(local1)}";
+            "dst" = "#{dst1}"
+          };
+          "#{src2_md5}" = @{
+            "target" = "#{dst2}";
+            "src_basename" = "#{File.basename(local2)}";
+            "dst" = "#{dst2}"
+          };
+          "#{src3_md5}" = @{
+            "target" = "#{dst3}";
+            "src_basename" = "#{File.basename(local3)}";
+            "dst" = "#{dst3}"
+          }
         }
       HASH
 

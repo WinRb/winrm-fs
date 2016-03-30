@@ -16,15 +16,21 @@ Function Copy-Stream($src, $dst) { $b = New-Object Byte[] 4096; while (($i = $sr
 
 Function Check-Files($h) {
   return $h.GetEnumerator() | ForEach-Object {
-    $dst = Unresolve-Path $_.Key
+    $dst = Unresolve-Path $_.Value.target
+    $dst_changed = $false
+    if(Test-Path $dst -PathType Container) {
+      $dst_changed = $true
+      $dst = Join-Path $dst $_.Value.src_basename
+    }
     New-Object psobject -Property @{
       chk_exists = ($exists = Test-Path $dst -PathType Leaf)
-      src_md5 = ($sMd5 = $_.Value)
+      src_md5 = ($sMd5 = $_.Key)
       dst_md5 = ($dMd5 = if ($exists) { Get-MD5Sum $dst } else { $null })
       chk_dirty = ($dirty = if ($sMd5 -ne $dMd5) { $true } else { $false })
       verifies = if ($dirty -eq $false) { $true } else { $false }
+      dst = if($dst_changed) { $dst } else { $_.Value.dst }
     }
-  } | Select-Object -Property chk_exists,src_md5,dst_md5,chk_dirty,verifies
+  } | Select-Object -Property chk_exists,src_md5,dst_md5,chk_dirty,verifies,dst
 }
 
 Function Get-MD5Sum($src) {

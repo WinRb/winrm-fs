@@ -63,8 +63,21 @@ describe WinRM::FS::FileManager do
     end
 
     it 'should upload to the specified directory' do
+      subject.create_dir(dest_dir)
       subject.upload(this_file, dest_dir)
       expect(subject).to have_created(dest_file).with_content(this_file)
+    end
+
+    it 'should treat extensionless target as file if not an existing directory' do
+      subject.upload(this_file, dest_dir)
+      expect(subject).to have_created(dest_dir).with_content(this_file)
+    end
+
+    it 'should create extensionless source under target dir if target dir exists' do
+      subject.create_dir(dest_dir)
+      src_file = File.expand_path('../../Gemfile', File.dirname(__FILE__))
+      subject.upload(src_file, dest_dir)
+      expect(subject).to have_created(File.join(dest_dir, 'Gemfile')).with_content(src_file)
     end
 
     it 'should upload to the specified directory with env var' do
@@ -74,6 +87,7 @@ describe WinRM::FS::FileManager do
     end
 
     it 'should upload to Program Files sub dir' do
+      subject.create_dir('$env:ProgramFiles/foo')
       subject.upload(this_file, '$env:ProgramFiles/foo')
       expect(subject).to have_created('c:/Program Files/foo/file_manager_spec.rb') \
         .with_content(this_file)
@@ -81,6 +95,7 @@ describe WinRM::FS::FileManager do
 
     it 'should upload to the specified nested directory' do
       dest_sub_dir = File.join(dest_dir, 'subdir')
+      subject.create_dir(dest_sub_dir)
       dest_sub_dir_file = File.join(dest_sub_dir, File.basename(this_file))
       subject.upload(this_file, dest_sub_dir)
       expect(subject).to have_created(dest_sub_dir_file).with_content(this_file)
