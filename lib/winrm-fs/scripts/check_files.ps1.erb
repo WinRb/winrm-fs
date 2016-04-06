@@ -1,3 +1,4 @@
+$host.ui.RawUI.WindowSize.Width=256
 $hash_file = "<%= hash_file %>"
 
 Function Cleanup($o) { if (($o -ne $null) -and ($o.GetType().GetMethod("Dispose") -ne $null)) { $o.Dispose() } }
@@ -28,9 +29,9 @@ Function Check-Files($h) {
       dst_md5 = ($dMd5 = if ($exists) { Get-MD5Sum $dst } else { $null })
       chk_dirty = ($dirty = if ($sMd5 -ne $dMd5) { $true } else { $false })
       verifies = if ($dirty -eq $false) { $true } else { $false }
-      dst = if($dst_changed) { $dst } else { $_.Value.dst }
+      target_is_folder = $dst_changed
     }
-  } | Select-Object -Property chk_exists,src_md5,dst_md5,chk_dirty,verifies,dst
+  } | Select-Object -Property chk_exists,src_md5,dst_md5,chk_dirty,verifies,target_is_folder
 }
 
 Function Get-MD5Sum($src) {

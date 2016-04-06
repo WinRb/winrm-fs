@@ -79,6 +79,7 @@ module WinRM
             files = make_files_hash(Array(locals), remote)
             report = check_files(files)
             merge_with_report!(files, report)
+            reconcile_destinations!(files)
           end
           total_size = total_base64_transfer_size(files)
 
@@ -130,6 +131,22 @@ module WinRM
         # @return [Winrm::CommandExecutor] a WinRM CommandExecutor
         # @api private
         attr_reader :executor
+
+        # Examines the files and corrects the file destination if it is
+        # targeting an existing folder. In this case, the destination path
+        # will have the base name of the source file appended. This only
+        # applies to file uploads and not to folder uploads.
+        #
+        # @param files [Hash] files hash, keyed by the local MD5 digest
+        # @return [Hash] a report hash, keyed by the local MD5 digest
+        # @api private
+        def reconcile_destinations!(files)
+          files.each do |_, data|
+            if data['target_is_folder'] == 'True'
+              data['dst'] = File.join(data['dst'], File.basename(data['src']))
+            end
+          end
+        end
 
         # Adds an entry to a files Hash (keyed by local MD5 digest) for a
         # directory. When a directory is added, a temporary Zip file is created
@@ -380,6 +397,9 @@ module WinRM
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
               "(exitcode: 0), but stderr present\n#{pretty_stderr}"
           end
+
+          logger.debug 'Parsing CSV Response'
+          logger.debug output.stdout
 
           array = CSV.parse(output.stdout, headers: true).map(&:to_hash)
           array.each { |h| h.each { |key, value| h[key] = nil if value == '' } }
