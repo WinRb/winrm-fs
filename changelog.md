@@ -1,5 +1,8 @@
 # WinRM-fs Gem Changelog
 
+# 0.4.1
+- Fixes a regression on Windows 2008 R2/Windows 7 and below where the WinRM service corrupts the check files metadata resulting in malformed destination paths.
+
 # 0.4.0
 - Correct the destination path of individual files. Always assume it is the full destination path unless it is an existing directory. This may potentialy break some callers expecting the remote path to be a directory that winrm-fs will create if missing as the destination of the local file. A new directory will not be created and the local file will be uploaded directly to the remote path.
 
