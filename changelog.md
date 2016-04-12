@@ -1,5 +1,8 @@
 # WinRM-fs Gem Changelog
 
+# 0.4.2.dev
+- Improved Powershell error handling in metadata checking.
+
 # 0.4.1
 - Fixes a regression on Windows 2008 R2/Windows 7 and below where the WinRM service corrupts the check files metadata resulting in malformed destination paths.
 

@@ -47,7 +47,12 @@ Function Invoke-Input($in) {
   Decode-Base64File $in ($decoded = "$($in).ps1")
   $expr = Get-Content $decoded | Out-String
   Remove-Item $in,$decoded -Force
-  return Invoke-Expression "$expr"
+  try {
+    return Invoke-Expression "$expr"
+  }
+  catch {
+    throw "There was an error invoking '$expr': `n$($_ | Out-String)"
+  }
 }
 
 Function Unresolve-Path($p) { if ($p -eq $null) { return $null } else { return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p) } }
