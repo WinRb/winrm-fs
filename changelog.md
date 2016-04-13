@@ -1,6 +1,6 @@
 # WinRM-fs Gem Changelog
 
-# 0.4.2.dev
+# 0.4.2
 - Improved Powershell error handling in metadata checking.
 
 # 0.4.1
