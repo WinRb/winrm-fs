@@ -9,15 +9,14 @@ require_relative 'matchers'
 module ConnectionHelper
   # rubocop:disable AbcSize
   def winrm_connection
-    WinRM::WinRMWebService.new(
-      config[:endpoint], config[:auth_type].to_sym, config[:options])
+    WinRM::Connection.new(config)
   end
   # rubocop:enable AbcSize
 
   def config
     @config ||= begin
       cfg = symbolize_keys(YAML.load(File.read(winrm_config_path)))
-      cfg[:options].merge!(basic_auth_only: true) unless cfg[:auth_type].eql? :kerberos
+      cfg.merge!(basic_auth_only: true) unless cfg[:transport].eql? :kerberos
       merge_environment!(cfg)
       cfg
     end
@@ -25,18 +24,18 @@ module ConnectionHelper
 
   def merge_environment!(config)
     merge_config_option_from_environment(config, 'user')
-    merge_config_option_from_environment(config, 'pass')
+    merge_config_option_from_environment(config, 'password')
     merge_config_option_from_environment(config, 'no_ssl_peer_verification')
     if ENV['use_ssl_peer_fingerprint']
       config[:options][:ssl_peer_fingerprint] = ENV['winrm_cert']
     end
     config[:endpoint] = ENV['winrm_endpoint'] if ENV['winrm_endpoint']
-    config[:auth_type] = ENV['winrm_auth_type'] if ENV['winrm_auth_type']
+    config[:transport] = ENV['winrm_transport'] if ENV['winrm_transport']
   end
 
   def merge_config_option_from_environment(config, key)
     env_key = 'winrm_' + key
-    config[:options][key.to_sym] = ENV[env_key] if ENV[env_key]
+    config[key.to_sym] = ENV[env_key] if ENV[env_key]
   end
 
   def winrm_config_path

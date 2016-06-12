@@ -41,8 +41,8 @@ module WinRM
       # sessions being invoked which can be 2 orders of magnitude more
       # expensive than vanilla CMD commands.
       #
-      # This object is supported by either a `CommandExecutor` instance as it
-      # depends on the `#run_cmd` and `#run_powershell_script` API contracts.
+      # This object is supported by a `PowerShell` instance as it
+      # depends on the `#run` API contract.
       #
       # An optional logger can be supplied, assuming it can respond to the
       # `#debug` and `#debug?` messages.
@@ -50,12 +50,12 @@ module WinRM
       # @author Fletcher Nichol <fnichol@nichol.ca>
       # @author Matt Wrock <matt@mattwrock.com>
       class FileTransporter
-        # Creates a FileTransporter given a CommandExecutor object.
+        # Creates a FileTransporter given a PowerShell object.
         #
-        # @param executor [CommandExecutor] a winrm CommandExecutor object
-        def initialize(executor, opts = {})
-          @executor  = executor
-          @logger = executor.service.logger
+        # @param shell [PowerShell] a winrm PowerShell object
+        def initialize(shell, opts = {})
+          @shell  = shell
+          @logger = shell.logger
           @id_generator = opts.fetch(:id_generator) { -> { SecureRandom.uuid } }
         end
 
@@ -112,7 +112,7 @@ module WinRM
         #   a Windows CMD prompt without exceeded the maximum command line
         #   length
         # @api private
-        MAX_ENCODED_WRITE = 8000
+        MAX_ENCODED_WRITE = 376000
 
         # @return [String] the Array pack template for Base64 encoding a stream
         #   of data
@@ -128,9 +128,9 @@ module WinRM
         # @api private
         attr_reader :logger
 
-        # @return [Winrm::CommandExecutor] a WinRM CommandExecutor
+        # @return [Winrm::Commandshell] a WinRM Commandshell
         # @api private
-        attr_reader :executor
+        attr_reader :shell
 
         # Examines the files and corrects the file destination if it is
         # targeting an existing folder. In this case, the destination path
@@ -200,7 +200,7 @@ module WinRM
           logger.debug 'Running check_files.ps1'
           hash_file = create_remote_hash_file(check_files_ps_hash(files))
           script = WinRM::FS::Scripts.render('check_files', hash_file: hash_file)
-          parse_response(executor.run_powershell_script(script))
+          parse_response(shell.run(script))
         end
 
         # Constructs a collection of destination path/MD5 checksum pairs as a
@@ -270,7 +270,7 @@ module WinRM
             hash_file = create_remote_hash_file(decoded_files)
             script = WinRM::FS::Scripts.render('decode_files', hash_file: hash_file)
 
-            parse_response(executor.run_powershell_script(script))
+            parse_response(shell.run(script))
           end
         end
 
@@ -358,20 +358,6 @@ module WinRM
           ' ' * depth
         end
 
-        # Parses CLIXML String into regular String (without any XML syntax).
-        # Inspired by https://github.com/WinRb/WinRM/issues/106.
-        #
-        # @param  clixml [String] clixml text
-        # @return [String] parsed clixml into String
-        def clixml_to_s(clixml)
-          doc = REXML::Document.new(clixml)
-          text = doc.get_elements('//S').map(&:text).join
-          text.gsub(/_x(\h\h\h\h)_/) do
-            code = Regexp.last_match[1]
-            code.hex.chr
-          end
-        end
-
         # Parses response of a PowerShell script or CMD command which contains
         # a CSV-formatted document in the standard output stream.
         #
@@ -388,14 +374,13 @@ module WinRM
             fail StandardError, 'The command line is too long' \
               ' (powershell script is too long)'
           end
-          pretty_stderr = clixml_to_s(stderr)
 
           if exitcode != 0
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
-              "(exitcode: #{exitcode})\n#{pretty_stderr}"
-          elsif pretty_stderr != '\r\n' && pretty_stderr != ''
+              "(exitcode: #{exitcode})\n#{stderr}"
+          elsif stderr != '\r\n' && stderr != ''
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
-              "(exitcode: 0), but stderr present\n#{pretty_stderr}"
+              "(exitcode: 0), but stderr present\n#{stderr}"
           end
 
           logger.debug 'Parsing CSV Response'
@@ -441,15 +426,13 @@ module WinRM
         #   the number of bytes transferred to the remote host
         # @api private
         def stream_upload(input_io, dest)
-          dest_cmd = dest.sub('$env:TEMP', '%TEMP%')
           read_size = (MAX_ENCODED_WRITE.to_i / 4) * 3
           chunk, bytes = 1, 0
           buffer = ''
-          executor.run_cmd(%(echo|set /p=>"#{dest_cmd}")) # truncate empty file
+          shell.run("\"\" | Out-File #{dest} -Encoding ascii")
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
-            executor.run_cmd([buffer].pack(BASE64_PACK)
-              .insert(0, 'echo ').concat(%( >> "#{dest_cmd}")))
+            shell.run("\"#{[buffer].pack(BASE64_PACK)}\" | Out-File #{dest} -Encoding ascii -Append")
             logger.debug "Wrote chunk #{chunk} for #{dest}" if chunk % 25 == 0
             chunk += 1
             yield bytes if block_given?

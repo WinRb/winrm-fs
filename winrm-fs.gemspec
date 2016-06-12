@@ -29,7 +29,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'erubis', '~> 2.7'
   s.add_runtime_dependency 'logging', ['>= 1.6.1', '< 3.0']
   s.add_runtime_dependency 'rubyzip', '~> 1.1'
-  s.add_runtime_dependency 'winrm', '~> 1.5'
+  s.add_runtime_dependency 'winrm'
   s.add_development_dependency 'pry'
   s.add_development_dependency 'rspec', '~> 3.0.0'
   s.add_development_dependency 'rake', '~> 10.3.2'
