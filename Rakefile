@@ -17,7 +17,7 @@ end
 
 # Run the integration test suite
 RSpec::Core::RakeTask.new(:integration) do |task|
-  task.pattern = 'spec/integration/benchmark_spec.rb'
+  task.pattern = 'spec/integration/*_spec.rb'
   task.rspec_opts = ['--color', '-f documentation']
 end
 

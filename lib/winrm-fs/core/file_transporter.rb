@@ -112,7 +112,7 @@ module WinRM
         #   a Windows CMD prompt without exceeded the maximum command line
         #   length
         # @api private
-        MAX_ENCODED_WRITE = 376000
+        MAX_ENCODED_WRITE = 376_000
 
         # @return [String] the Array pack template for Base64 encoding a stream
         #   of data
@@ -429,10 +429,11 @@ module WinRM
           read_size = (MAX_ENCODED_WRITE.to_i / 4) * 3
           chunk, bytes = 1, 0
           buffer = ''
-          shell.run("\"\" | Out-File #{dest} -Encoding ascii")
+          shell.run("'' | Out-File \"#{dest}\" -Encoding ascii")
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
-            shell.run("\"#{[buffer].pack(BASE64_PACK)}\" | Out-File #{dest} -Encoding ascii -Append")
+            shell.run(
+              "'#{[buffer].pack(BASE64_PACK)}' | Out-File \"#{dest}\" -Encoding ascii -Append")
             logger.debug "Wrote chunk #{chunk} for #{dest}" if chunk % 25 == 0
             chunk += 1
             yield bytes if block_given?

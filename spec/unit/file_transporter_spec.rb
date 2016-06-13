@@ -35,11 +35,11 @@ describe WinRM::FS::Core::FileTransporter do
 
   let(:randomness)    { %w(alpha beta charlie delta).each }
   let(:id_generator)  { -> { randomness.next } }
-  let(:winrm_service) { double('winrm_service', logger: logger) }
-  let(:service) { double('command_executor', service: winrm_service) }
+  let(:winrm_connection) { double('winrm_connection', logger: logger) }
+  let(:shell) { double('shell', logger: logger) }
   let(:transporter) do
     WinRM::FS::Core::FileTransporter.new(
-      service,
+      shell,
       id_generator: id_generator
     )
   end
@@ -55,7 +55,7 @@ describe WinRM::FS::Core::FileTransporter do
     let(:dst)         { "#{remote}/#{File.basename(local)}" }
     let(:src_md5)     { md5sum(local) }
     let(:size)        { File.size(local) }
-    let(:cmd_tmpfile) { "%TEMP%\\b64-#{src_md5}.txt" }
+    let(:cmd_tmpfile) { "$env:TEMP\\b64-#{src_md5}.txt" }
     let(:ps_tmpfile)  { "$env:TEMP\\b64-#{src_md5}.txt" }
 
     let(:upload) { transporter.upload(local, remote) }
@@ -63,8 +63,8 @@ describe WinRM::FS::Core::FileTransporter do
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def self.common_specs_for_all_single_file_types
       it 'truncates a zero-byte hash_file for check_files' do
-        expect(service).to receive(:run_cmd).with(
-          regexify(%(echo|set /p=>"%TEMP%\\hash-alpha.txt")))
+        expect(shell).to receive(:run).with(
+          regexify(%('' | Out-File "$env:TEMP\\hash-alpha.txt" -Encoding ascii)))
           .and_return(cmd_output)
 
         upload
@@ -81,15 +81,15 @@ describe WinRM::FS::Core::FileTransporter do
           }
         HASH
 
-        expect(service).to receive(:run_cmd)
-          .with(%(echo #{base64(hash)} >> "%TEMP%\\hash-alpha.txt"))
+        expect(shell).to receive(:run)
+          .with(%('#{base64(hash)}' | Out-File "$env:TEMP\\hash-alpha.txt" -Encoding ascii -Append))
           .and_return(cmd_output).once
 
         upload
       end
 
       it 'sets hash_file and runs the check_files powershell script' do
-        expect(service).to receive(:run_powershell_script).with(
+        expect(shell).to receive(:run).with(
           regexify(%($hash_file = "$env:TEMP\\hash-alpha.txt")) &&
             regexify(
               'Check-Files (Invoke-Input $hash_file) | ' \
@@ -104,20 +104,9 @@ describe WinRM::FS::Core::FileTransporter do
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def self.common_specs_for_all_single_dirty_file_types
       it 'truncates a zero-byte tempfile' do
-        expect(service).to receive(:run_cmd).with(
-          regexify(%(echo|set /p=>"#{cmd_tmpfile}"))
+        expect(shell).to receive(:run).with(
+          regexify(%('' | Out-File "#{cmd_tmpfile}" -Encoding ascii))
         ).and_return(cmd_output)
-
-        upload
-      end
-
-      it 'ploads the file in 8k chunks' do
-        expect(service).to receive(:run_cmd)
-          .with(%(echo #{base64('.' * 6000)} >> "#{cmd_tmpfile}"))
-          .and_return(cmd_output).twice
-        expect(service).to receive(:run_cmd)
-          .with(%(echo #{base64('.' * 3)} >> "#{cmd_tmpfile}"))
-          .and_return(cmd_output).once
 
         upload
       end
@@ -126,8 +115,8 @@ describe WinRM::FS::Core::FileTransporter do
         let(:content) { 'hello, world' }
 
         it 'uploads the file in base64 encoding' do
-          expect(service).to receive(:run_cmd)
-            .with(%(echo #{base64(content)} >> "#{cmd_tmpfile}"))
+          expect(shell).to receive(:run)
+            .with(%('#{base64(content)}' | Out-File "#{cmd_tmpfile}" -Encoding ascii -Append))
             .and_return(cmd_output)
 
           upload
@@ -135,8 +124,8 @@ describe WinRM::FS::Core::FileTransporter do
       end
 
       it 'truncates a zero-byte hash_file for decode_files' do
-        expect(service).to receive(:run_cmd).with(
-          regexify(%(echo|set /p=>"%TEMP%\\hash-beta.txt"))
+        expect(shell).to receive(:run).with(
+          regexify(%('' | Out-File "$env:TEMP\\hash-beta.txt" -Encoding ascii))
         ).and_return(cmd_output)
 
         upload
@@ -151,15 +140,15 @@ describe WinRM::FS::Core::FileTransporter do
           }
         HASH
 
-        expect(service).to receive(:run_cmd)
-          .with(%(echo #{base64(hash)} >> "%TEMP%\\hash-beta.txt"))
+        expect(shell).to receive(:run)
+          .with(%('#{base64(hash)}' | Out-File "$env:TEMP\\hash-beta.txt" -Encoding ascii -Append))
           .and_return(cmd_output).once
 
         upload
       end
 
       it 'sets hash_file and runs the decode_files powershell script' do
-        expect(service).to receive(:run_powershell_script).with(
+        expect(shell).to receive(:run).with(
           regexify(%($hash_file = "$env:TEMP\\hash-beta.txt")) &&
             regexify(
               'Decode-Files (Invoke-Input $hash_file) | ' \
@@ -193,14 +182,14 @@ describe WinRM::FS::Core::FileTransporter do
       end
 
       before do
-        allow(service).to receive(:run_cmd)
+        allow(shell).to receive(:run)
           .and_return(cmd_output)
 
-        allow(service).to receive(:run_powershell_script)
+        allow(shell).to receive(:run)
           .with(/^Check-Files .+ \| ConvertTo-Csv/)
           .and_return(check_output)
 
-        allow(service).to receive(:run_powershell_script)
+        allow(shell).to receive(:run)
           .with(/^Decode-Files .+ \| ConvertTo-Csv/)
           .and_return(decode_output)
       end
@@ -223,7 +212,7 @@ describe WinRM::FS::Core::FileTransporter do
             'verifies'    => 'True',
             'size'        => size,
             'xfered'      => size / 3 * 4,
-            'chunks'      => (size / 6000.to_f).ceil
+            'chunks'      => 1
           }
         )
       end
@@ -277,14 +266,14 @@ describe WinRM::FS::Core::FileTransporter do
       end
 
       before do
-        allow(service).to receive(:run_cmd)
+        allow(shell).to receive(:run)
           .and_return(cmd_output)
 
-        allow(service).to receive(:run_powershell_script)
+        allow(shell).to receive(:run)
           .with(/^Check-Files .+ \| ConvertTo-Csv/)
           .and_return(check_output)
 
-        allow(service).to receive(:run_powershell_script)
+        allow(shell).to receive(:run)
           .with(/^Decode-Files .+ \| ConvertTo-Csv/)
           .and_return(decode_output)
       end
@@ -307,7 +296,7 @@ describe WinRM::FS::Core::FileTransporter do
             'verifies'    => 'True',
             'size'        => size,
             'xfered'      => size / 3 * 4,
-            'chunks'      => (size / 6000.to_f).ceil
+            'chunks'      => 1
           }
         )
       end
@@ -327,10 +316,10 @@ describe WinRM::FS::Core::FileTransporter do
       end
 
       before do
-        allow(service).to receive(:run_cmd)
+        allow(shell).to receive(:run)
           .and_return(cmd_output)
 
-        allow(service).to receive(:run_powershell_script)
+        allow(shell).to receive(:run)
           .with(/^Check-Files .+ \| ConvertTo-Csv/)
           .and_return(check_output)
       end
@@ -338,13 +327,13 @@ describe WinRM::FS::Core::FileTransporter do
       common_specs_for_all_single_file_types
 
       it 'uploads nothing' do
-        expect(service).not_to receive(:run_cmd).with(/#{remote}/)
+        expect(shell).not_to receive(:run).with(/#{remote}/)
 
         upload
       end
 
       it 'skips the decode_files powershell script' do
-        expect(service).not_to receive(:run_powershell_script).with(regexify(
+        expect(shell).not_to receive(:run).with(regexify(
             'Decode-Files $files | ConvertTo-Csv -NoTypeInformation')
         )
 
@@ -376,7 +365,7 @@ describe WinRM::FS::Core::FileTransporter do
     let(:dst)         { remote }
     let(:src_md5)     { md5sum(src_zip) }
     let(:size)        { File.size(src_zip) }
-    let(:cmd_tmpfile) { "%TEMP%\\b64-#{src_md5}.txt" }
+    let(:cmd_tmpfile) { "$env:TEMP\\b64-#{src_md5}.txt" }
     let(:ps_tmpfile)  { "$env:TEMP\\b64-#{src_md5}.txt" }
     let(:ps_tmpzip)   { "$env:TEMP\\winrm-upload\\tmpzip-#{src_md5}.zip" }
 
@@ -406,14 +395,14 @@ describe WinRM::FS::Core::FileTransporter do
       allow(WinRM::FS::Core::TmpZip).to receive(:new).with("#{local}/", logger)
         .and_return(tmp_zip)
 
-      allow(service).to receive(:run_cmd)
+      allow(shell).to receive(:run)
         .and_return(cmd_output)
 
-      allow(service).to receive(:run_powershell_script)
+      allow(shell).to receive(:run)
         .with(/^Check-Files .+ \| ConvertTo-Csv/)
         .and_return(check_output)
 
-      allow(service).to receive(:run_powershell_script)
+      allow(shell).to receive(:run)
         .with(/^Decode-Files .+ \| ConvertTo-Csv/)
         .and_return(decode_output)
     end
@@ -425,8 +414,8 @@ describe WinRM::FS::Core::FileTransporter do
     let(:upload) { transporter.upload("#{local}/", remote) }
 
     it 'truncates a zero-byte hash_file for check_files' do
-      expect(service).to receive(:run_cmd).with(regexify(%(echo|set /p=>"%TEMP%\\hash-alpha.txt"))
-      ).and_return(cmd_output)
+      expect(shell).to receive(:run).with(regexify(
+        %('' | Out-File "$env:TEMP\\hash-alpha.txt" -Encoding ascii))).and_return(cmd_output)
 
       upload
     end
@@ -442,15 +431,15 @@ describe WinRM::FS::Core::FileTransporter do
         }
       HASH
 
-      expect(service).to receive(:run_cmd)
-        .with(%(echo #{base64(hash)} >> "%TEMP%\\hash-alpha.txt"))
+      expect(shell).to receive(:run)
+        .with(%('#{base64(hash)}' | Out-File "$env:TEMP\\hash-alpha.txt" -Encoding ascii -Append))
         .and_return(cmd_output).once
 
       upload
     end
 
     it 'sets hash_file and runs the check_files powershell script' do
-      expect(service).to receive(:run_powershell_script).with(
+      expect(shell).to receive(:run).with(
         regexify(%($hash_file = "$env:TEMP\\hash-alpha.txt")) &&
           regexify(
             'Check-Files (Invoke-Input $hash_file) | ' \
@@ -461,23 +450,23 @@ describe WinRM::FS::Core::FileTransporter do
     end
 
     it 'truncates a zero-byte tempfile' do
-      expect(service).to receive(:run_cmd).with(regexify(%(echo|set /p=>"#{cmd_tmpfile}"))
-      ).and_return(cmd_output)
+      expect(shell).to receive(:run).with(regexify(
+        %('' | Out-File "#{cmd_tmpfile}" -Encoding ascii))).and_return(cmd_output)
 
       upload
     end
 
     it 'uploads the zip file in base64 encoding' do
-      expect(service).to receive(:run_cmd)
-        .with(%(echo #{base64(content)} >> "#{cmd_tmpfile}"))
+      expect(shell).to receive(:run)
+        .with(%('#{base64(content)}' | Out-File "#{cmd_tmpfile}" -Encoding ascii -Append))
         .and_return(cmd_output)
 
       upload
     end
 
     it 'truncates a zero-byte hash_file for decode_files' do
-      expect(service).to receive(:run_cmd).with(regexify(%(echo|set /p=>"%TEMP%\\hash-beta.txt"))
-      ).and_return(cmd_output)
+      expect(shell).to receive(:run).with(regexify(
+        %('' | Out-File "$env:TEMP\\hash-beta.txt" -Encoding ascii))).and_return(cmd_output)
 
       upload
     end
@@ -492,15 +481,15 @@ describe WinRM::FS::Core::FileTransporter do
         }
       HASH
 
-      expect(service).to receive(:run_cmd)
-        .with(%(echo #{base64(hash)} >> "%TEMP%\\hash-beta.txt"))
+      expect(shell).to receive(:run)
+        .with(%('#{base64(hash)}' | Out-File "$env:TEMP\\hash-beta.txt" -Encoding ascii -Append))
         .and_return(cmd_output).once
 
       upload
     end
 
     it 'sets hash_file and runs the decode_files powershell script' do
-      expect(service).to receive(:run_powershell_script).with(
+      expect(shell).to receive(:run).with(
         regexify(%($hash_file = "$env:TEMP\\hash-beta.txt")) &&
           regexify(
             'Decode-Files (Invoke-Input $hash_file) | ' \
@@ -573,7 +562,7 @@ describe WinRM::FS::Core::FileTransporter do
       let(:"src#{i}_md5") { md5sum(send("local#{i}")) }
       let(:"dst#{i}") { "#{remote}" }
       let(:"size#{i}") { File.size(send("local#{i}")) }
-      let(:"cmd#{i}_tmpfile") { "%TEMP%\\b64-#{send("src#{i}_md5")}.txt" }
+      let(:"cmd#{i}_tmpfile") { "$env:TEMP\\b64-#{send("src#{i}_md5")}.txt" }
       let(:"ps#{i}_tmpfile") { "$env:TEMP\\b64-#{send("src#{i}_md5")}.txt" }
     end
 
@@ -604,21 +593,21 @@ describe WinRM::FS::Core::FileTransporter do
     let(:upload) { transporter.upload([local1, local2, local3], remote) }
 
     before do
-      allow(service).to receive(:run_cmd)
+      allow(shell).to receive(:run)
         .and_return(cmd_output)
 
-      allow(service).to receive(:run_powershell_script)
+      allow(shell).to receive(:run)
         .with(/^Check-Files .+ \| ConvertTo-Csv/)
         .and_return(check_output)
 
-      allow(service).to receive(:run_powershell_script)
+      allow(shell).to receive(:run)
         .with(/^Decode-Files .+ \| ConvertTo-Csv/)
         .and_return(decode_output)
     end
 
     it 'truncates a zero-byte hash_file for check_files' do
-      expect(service).to receive(:run_cmd).with(regexify(%(echo|set /p=>"%TEMP%\\hash-alpha.txt"))
-      ).and_return(cmd_output)
+      expect(shell).to receive(:run).with(regexify(
+        %('' | Out-File "$env:TEMP\\hash-alpha.txt" -Encoding ascii))).and_return(cmd_output)
 
       upload
     end
@@ -644,15 +633,15 @@ describe WinRM::FS::Core::FileTransporter do
         }
       HASH
 
-      expect(service).to receive(:run_cmd)
-        .with(%(echo #{base64(hash)} >> "%TEMP%\\hash-alpha.txt"))
+      expect(shell).to receive(:run)
+        .with(%('#{base64(hash)}' | Out-File "$env:TEMP\\hash-alpha.txt" -Encoding ascii -Append))
         .and_return(cmd_output).once
 
       upload
     end
 
     it 'sets hash_file and runs the check_files powershell script' do
-      expect(service).to receive(:run_powershell_script).with(
+      expect(shell).to receive(:run).with(
         regexify(%($hash_file = "$env:TEMP\\hash-alpha.txt")) &&
           regexify(
             'Check-Files (Invoke-Input $hash_file) | ' \
@@ -663,19 +652,19 @@ describe WinRM::FS::Core::FileTransporter do
     end
 
     it 'only uploads dirty files' do
-      expect(service).to receive(:run_cmd)
-        .with(%(echo #{base64(IO.read(local1))} >> "#{cmd1_tmpfile}"))
-      expect(service).to receive(:run_cmd)
-        .with(%(echo #{base64(IO.read(local2))} >> "#{cmd2_tmpfile}"))
-      expect(service).not_to receive(:run_cmd)
-        .with(%(echo #{base64(IO.read(local3))} >> "#{cmd3_tmpfile}"))
+      expect(shell).to receive(:run)
+        .with(%('#{base64(IO.read(local1))}' | Out-File "#{cmd1_tmpfile}" -Encoding ascii -Append))
+      expect(shell).to receive(:run)
+        .with(%('#{base64(IO.read(local2))}' | Out-File "#{cmd2_tmpfile}" -Encoding ascii -Append))
+      expect(shell).not_to receive(:run)
+        .with(%('#{base64(IO.read(local3))}' | Out-File "#{cmd3_tmpfile}" -Encoding ascii -Append))
 
       upload
     end
 
     it 'truncates a zero-byte hash_file for decode_files' do
-      expect(service).to receive(:run_cmd).with(regexify(%(echo|set /p=>"%TEMP%\\hash-beta.txt"))
-      ).and_return(cmd_output)
+      expect(shell).to receive(:run).with(regexify(
+        %('' | Out-File "$env:TEMP\\hash-beta.txt" -Encoding ascii))).and_return(cmd_output)
 
       upload
     end
@@ -692,15 +681,15 @@ describe WinRM::FS::Core::FileTransporter do
         }
       HASH
 
-      expect(service).to receive(:run_cmd)
-        .with(%(echo #{base64(hash)} >> "%TEMP%\\hash-beta.txt"))
+      expect(shell).to receive(:run)
+        .with(%('#{base64(hash)}' | Out-File "$env:TEMP\\hash-beta.txt" -Encoding ascii -Append))
         .and_return(cmd_output).once
 
       upload
     end
 
     it 'sets hash_file and runs the decode_files powershell script' do
-      expect(service).to receive(:run_powershell_script).with(
+      expect(shell).to receive(:run).with(
         regexify(%($hash_file = '$env:TEMP\\hash-beta.txt')) &&
           regexify(
             'Decode-Files (Invoke-Input $hash_file) | ' \
