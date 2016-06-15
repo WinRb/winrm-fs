@@ -36,7 +36,7 @@ describe WinRM::FS::Core::FileTransporter do
   let(:randomness)    { %w(alpha beta charlie delta).each }
   let(:id_generator)  { -> { randomness.next } }
   let(:winrm_connection) { double('winrm_connection', logger: logger) }
-  let(:shell) { double('shell', logger: logger) }
+  let(:shell) { double('shell', logger: logger, max_fragment_blob_size: 400_000) }
   let(:transporter) do
     WinRM::FS::Core::FileTransporter.new(
       shell,

@@ -108,12 +108,6 @@ module WinRM
 
         private
 
-        # @return [Integer] the maximum number of bytes that can be supplied on
-        #   a Windows CMD prompt without exceeded the maximum command line
-        #   length
-        # @api private
-        MAX_ENCODED_WRITE = 376_000
-
         # @return [String] the Array pack template for Base64 encoding a stream
         #   of data
         # @api private
@@ -131,6 +125,21 @@ module WinRM
         # @return [Winrm::Commandshell] a WinRM Commandshell
         # @api private
         attr_reader :shell
+
+        # @return [Integer] the maximum number of bytes to send per request
+        #   when streaming a file. This is optimized to send as much data
+        #   as allowed in a single PSRP fragment
+        # @api private
+        def max_encoded_write
+          @max_encoded_write ||= begin
+            empty_command = WinRM::PSRP::MessageFactory.create_pipeline_message(
+              '00000000-0000-0000-0000-000000000000',
+              '00000000-0000-0000-0000-000000000000',
+              stream_command('', '')
+            )
+            shell.max_fragment_blob_size - empty_command.bytes.length
+          end
+        end
 
         # Examines the files and corrects the file destination if it is
         # targeting an existing folder. In this case, the destination path
@@ -426,14 +435,13 @@ module WinRM
         #   the number of bytes transferred to the remote host
         # @api private
         def stream_upload(input_io, dest)
-          read_size = (MAX_ENCODED_WRITE.to_i / 4) * 3
+          read_size = ((max_encoded_write - dest.length) / 4) * 3
           chunk, bytes = 1, 0
           buffer = ''
           shell.run("'' | Out-File \"#{dest}\" -Encoding ascii")
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
-            shell.run(
-              "'#{[buffer].pack(BASE64_PACK)}' | Out-File \"#{dest}\" -Encoding ascii -Append")
+            shell.run(stream_command([buffer].pack(BASE64_PACK), dest))
             logger.debug "Wrote chunk #{chunk} for #{dest}" if chunk % 25 == 0
             chunk += 1
             yield bytes if block_given?
@@ -441,6 +449,10 @@ module WinRM
           buffer = nil # rubocop:disable Lint/UselessAssignment
 
           [chunk - 1, bytes]
+        end
+
+        def stream_command(encoded_bytes, dest)
+          "'#{encoded_bytes}' | Out-File \"#{dest}\" -Encoding ascii -Append"
         end
 
         # Uploads a local file to a Base64-encoded temporary file.
