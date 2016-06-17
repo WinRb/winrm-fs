@@ -1,7 +1,10 @@
-$host.ui.RawUI.WindowSize.Width=256
 $hash_file = "<%= hash_file %>"
 
-Function Cleanup($o) { if (($o -ne $null) -and ($o.GetType().GetMethod("Dispose") -ne $null)) { $o.Dispose() } }
+Function Cleanup($disposable) {
+  if ($disposable -ne $null) {
+    $disposable.Dispose()
+  }
+}
 
 Function Check-Files($h) {
   return $h.GetEnumerator() | ForEach-Object {
@@ -27,7 +30,11 @@ Function Get-MD5Sum($src) {
     $c = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
     $bytes = $c.ComputeHash(($in = (Get-Item $src).OpenRead()))
     return ([System.BitConverter]::ToString($bytes)).Replace("-", "").ToLower()
-  } Finally { Cleanup $c; Cleanup $in }
+  } 
+  Finally {
+    Cleanup $c
+    Cleanup $in
+  }
 }
 
 Function Invoke-Input($in) {
@@ -42,6 +49,13 @@ Function Invoke-Input($in) {
   }
 }
 
-Function Unresolve-Path($p) { if ($p -eq $null) { return $null } else { return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p) } }
+Function Unresolve-Path($path) {
+  if ($path -eq $null) {
+    return $null
+  }
+  else {
+    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path)
+  }
+}
 
 Check-Files (Invoke-Input $hash_file) | ConvertTo-Csv -NoTypeInformation
