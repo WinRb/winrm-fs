@@ -207,7 +207,7 @@ module WinRM
         # @api private
         def check_files(files)
           logger.debug 'Running check_files.ps1'
-          hash_file = create_remote_hash_file(check_files_ps_hash(files))
+          hash_file = check_files_ps_hash(files)
           script = WinRM::FS::Scripts.render('check_files', hash_file: hash_file)
           parse_response(shell.run(script))
         end
@@ -245,20 +245,6 @@ module WinRM
           end
         end
 
-        # Creates a remote Base64-encoded temporary file containing a
-        # PowerShell hash table.
-        #
-        # @param hash [String] a String representation of a PowerShell hash
-        #   table
-        # @return [String] the remote path to the temporary file
-        # @api private
-        def create_remote_hash_file(hash)
-          hash_file = "$env:TEMP\\hash-#{@id_generator.call}.ps1"
-          hash.lines.each { |line| logger.debug line.chomp }
-          StringIO.open(hash) { |io| stream_upload(io, hash_file) }
-          hash_file
-        end
-
         # Runs the extract_files PowerShell script against a collection of
         # temporary file/destination path pairs. The PowerShell script returns
         # its results as a CSV-formatted report which is converted into a Ruby
@@ -276,8 +262,7 @@ module WinRM
             {}
           else
             logger.debug 'Running extract_files.ps1'
-            hash_file = create_remote_hash_file(extracted_files)
-            script = WinRM::FS::Scripts.render('extract_files', hash_file: hash_file)
+            script = WinRM::FS::Scripts.render('extract_files', hash_file: extracted_files)
 
             parse_response(shell.run(script))
           end

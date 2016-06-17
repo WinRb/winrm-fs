@@ -8,17 +8,6 @@ trap {
   break
 }
 
-function Resolve-ProviderPath {
-  $input | % {
-    if ($_){
-      (Resolve-Path $_).ProviderPath
-    }
-    else{
-      $null
-    }
-  }
-}
-
 function Get-FrameworkVersion {
   "Full", "Client" | % {
     ([version](gp "HKLM:\Software\Microsoft\NET Framework Setup\NDP\v4\$_").Version)
@@ -46,13 +35,6 @@ Function Decode-Files($hash) {
   }
 }
 
-Function Invoke-Input($in) {
-  $in = $in | Resolve-ProviderPath
-  $expr = gc $in | Out-String
-  rm $in -Force
-  iex "$expr"
-}
-
 Function Unzip-File($src, $dst) {
   $unpack = $src -replace '\.zip'
   $dst_parent = Split-Path -Path $dst -Parent
@@ -75,5 +57,5 @@ Function Unzip-File($src, $dst) {
   rm $unpack -recurse -force
 }
 
-$hash_file = "<%= hash_file %>"
-Decode-Files (Invoke-Input $hash_file) | ConvertTo-Csv -NoTypeInformation
+$hash_file = <%= hash_file %>
+Decode-Files $hash_file | ConvertTo-Csv -NoTypeInformation

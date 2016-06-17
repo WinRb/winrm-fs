@@ -1,4 +1,4 @@
-$hash_file = "<%= hash_file %>"
+$hash_file = <%= hash_file %>
 
 Function Cleanup($disposable) {
   if ($disposable -ne $null) {
@@ -37,18 +37,6 @@ Function Get-MD5Sum($src) {
   }
 }
 
-Function Invoke-Input($in) {
-  $in = Unresolve-Path $in
-  $expr = Get-Content $in | Out-String
-  Remove-Item $in -Force
-  try {
-    return Invoke-Expression "$expr"
-  }
-  catch {
-    throw "There was an error invoking '$expr': `n$($_ | Out-String)"
-  }
-}
-
 Function Unresolve-Path($path) {
   if ($path -eq $null) {
     return $null
@@ -58,4 +46,4 @@ Function Unresolve-Path($path) {
   }
 }
 
-Check-Files (Invoke-Input $hash_file) | ConvertTo-Csv -NoTypeInformation
+Check-Files $hash_file | ConvertTo-Csv -NoTypeInformation
