@@ -91,7 +91,7 @@ module WinRM
           end
 
           elapsed3 = Benchmark.measure do
-            report = decode_files(files)
+            report = extract_files(files)
             merge_with_report!(files, report)
             cleanup(files)
           end
@@ -100,7 +100,7 @@ module WinRM
             "Uploaded #{files.keys.size} items " \
             "dirty_check: #{duration(elapsed1.real)} " \
             "stream_files: #{duration(elapsed2.real)} " \
-            "decode: #{duration(elapsed3.real)} " \
+            "extract: #{duration(elapsed3.real)} " \
           )
 
           [total_size, files]
@@ -135,7 +135,7 @@ module WinRM
             empty_command = WinRM::PSRP::MessageFactory.create_pipeline_message(
               '00000000-0000-0000-0000-000000000000',
               '00000000-0000-0000-0000-000000000000',
-              stream_command('', '')
+              stream_command('')
             )
             shell.max_fragment_blob_size - empty_command.bytes.length
           end
@@ -253,55 +253,52 @@ module WinRM
         # @return [String] the remote path to the temporary file
         # @api private
         def create_remote_hash_file(hash)
-          hash_file = "$env:TEMP\\hash-#{@id_generator.call}.txt"
+          hash_file = "$env:TEMP\\hash-#{@id_generator.call}.ps1"
           hash.lines.each { |line| logger.debug line.chomp }
           StringIO.open(hash) { |io| stream_upload(io, hash_file) }
           hash_file
         end
 
-        # Runs the decode_files PowerShell script against a collection of
+        # Runs the extract_files PowerShell script against a collection of
         # temporary file/destination path pairs. The PowerShell script returns
         # its results as a CSV-formatted report which is converted into a Ruby
-        # Hash. The script will not be invoked if there are no "dirty" files
+        # Hash. The script will not be invoked if there are no zip files
         # present in the incoming files Hash.
         #
         # @param files [Hash] files hash, keyed by the local MD5 digest
         # @return [Hash] a report hash, keyed by the local MD5 digest
         # @api private
-        def decode_files(files)
-          decoded_files = decode_files_ps_hash(files)
+        def extract_files(files)
+          extracted_files = extract_files_ps_hash(files)
 
-          if decoded_files == ps_hash({})
-            logger.debug 'No remote files to decode, skipping'
+          if extracted_files == ps_hash({})
+            logger.debug 'No remote files to extract, skipping'
             {}
           else
-            logger.debug 'Running decode_files.ps1'
-            hash_file = create_remote_hash_file(decoded_files)
-            script = WinRM::FS::Scripts.render('decode_files', hash_file: hash_file)
+            logger.debug 'Running extract_files.ps1'
+            hash_file = create_remote_hash_file(extracted_files)
+            script = WinRM::FS::Scripts.render('extract_files', hash_file: hash_file)
 
             parse_response(shell.run(script))
           end
         end
 
         # Constructs a collection of temporary file/destination path pairs for
-        # all "dirty" files as a String representation of the contents of a
-        # PowerShell Hash Table. A "dirty" file is one which has the
-        # `"chk_dirty"` option set to `"True"` in the incoming files Hash.
+        # all zipped folders as a String representation of the contents of a
+        # PowerShell Hash Table.
         #
         # @param files [Hash] files hash, keyed by the local MD5 digest
         # @return [String] the inner contents of a PowerShell Hash Table
         # @api private
-        def decode_files_ps_hash(files)
-          file_data = files.select do |_, data|
-            data['chk_dirty'] == 'True' || data.key?('tmpzip')
-          end
+        def extract_files_ps_hash(files)
+          file_data = files.select { |_, data| data.key?('tmpzip') }
 
           i = 0
           result = file_data.map do |_, data|
             val = { 'dst' => data['dst'] }
             val['tmpzip'] = data['tmpzip'] if data['tmpzip']
 
-            [data['tmpfile'] || "clean#{i += 1}", val]
+            [data['dest'] || "clean#{i += 1}", val]
           end
 
           ps_hash(Hash[result])
@@ -377,12 +374,6 @@ module WinRM
         def parse_response(output)
           exitcode = output[:exitcode]
           stderr = output.stderr
-          if stderr.include?('The command line is too long')
-            # The powershell script which should result in `output` parameter
-            # is too long, remove some newlines, comments, etc from it.
-            fail StandardError, 'The command line is too long' \
-              ' (powershell script is too long)'
-          end
 
           if exitcode != 0
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
@@ -438,41 +429,51 @@ module WinRM
           read_size = ((max_encoded_write - dest.length) / 4) * 3
           chunk, bytes = 1, 0
           buffer = ''
-          shell.run("'' | Out-File \"#{dest}\" -Encoding ascii")
+          shell.run(<<-EOS
+            $parent = Split-Path "#{dest}"
+            if(!(Test-path $parent)) { mkdir $parent | Out-Null}
+            $fileStream = New-Object -TypeName System.IO.FileStream -ArgumentList @(
+                "#{dest}",
+                [system.io.filemode]::Create,
+                [System.io.FileAccess]::Write,
+                [System.IO.FileShare]::ReadWrite
+            )
+            EOS
+          )
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
-            shell.run(stream_command([buffer].pack(BASE64_PACK), dest))
+            shell.run(stream_command([buffer].pack(BASE64_PACK)))
             logger.debug "Wrote chunk #{chunk} for #{dest}" if chunk % 25 == 0
             chunk += 1
             yield bytes if block_given?
           end
+          shell.run('$fileStream.Dispose()')
           buffer = nil # rubocop:disable Lint/UselessAssignment
 
           [chunk - 1, bytes]
         end
 
-        def stream_command(encoded_bytes, dest)
-          "'#{encoded_bytes}' | Out-File \"#{dest}\" -Encoding ascii -Append"
+        def stream_command(encoded_bytes)
+          "$bytes=[Convert]::FromBase64String('#{encoded_bytes}');$fileStream.Write($bytes, 0, $bytes.length)"
         end
 
-        # Uploads a local file to a Base64-encoded temporary file.
+        # Uploads a local file.
         #
         # @param src [String] path to a local file
-        # @param tmpfile [String] path to the temporary file on the remote
-        #   host
+        # @param dest [String] path to the file on the remote host
         # @return [Integer,Integer] the number of resulting upload chunks and
         #   the number of bytes transferred to the remote host
         # @api private
-        def stream_upload_file(src, tmpfile, &block)
-          logger.debug "Uploading #{src} to encoded tmpfile #{tmpfile}"
+        def stream_upload_file(src, dest, &block)
+          logger.debug "Uploading #{src} to #{dest}"
           chunks, bytes = 0, 0
           elapsed = Benchmark.measure do
             File.open(src, 'rb') do |io|
-              chunks, bytes = stream_upload(io, tmpfile, &block)
+              chunks, bytes = stream_upload(io, dest, &block)
             end
           end
           logger.debug(
-            "Finished uploading #{src} to encoded tmpfile #{tmpfile} " \
+            "Finished uploading #{src} to #{dest} " \
             "(#{bytes.to_f / 1000} KB over #{chunks} chunks) " \
             "in #{duration(elapsed.real)}"
           )
@@ -492,9 +493,8 @@ module WinRM
           files.each do |md5, data|
             src = data.fetch('src_zip', data['src'])
             if data['chk_dirty'] == 'True'
-              tmpfile = "$env:TEMP\\b64-#{md5}.txt"
-              response[md5] = { 'tmpfile' => tmpfile }
-              chunks, bytes = stream_upload_file(src, tmpfile) do |xfered|
+              response[md5] = { 'dest' => data['tmpzip'] || data['dst'] }
+              chunks, bytes = stream_upload_file(src, data['tmpzip'] || data['dst']) do |xfered|
                 yield data['src'], xfered
               end
               response[md5]['chunks'] = chunks

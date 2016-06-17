@@ -3,18 +3,6 @@ $hash_file = "<%= hash_file %>"
 
 Function Cleanup($o) { if (($o -ne $null) -and ($o.GetType().GetMethod("Dispose") -ne $null)) { $o.Dispose() } }
 
-Function Decode-Base64File($src, $dst) {
-  Try {
-    $in = (Get-Item $src).OpenRead()
-    $b64 = New-Object -TypeName System.Security.Cryptography.FromBase64Transform
-    $m = [System.Security.Cryptography.CryptoStreamMode]::Read
-    $d = New-Object -TypeName System.Security.Cryptography.CryptoStream $in,$b64,$m
-    Copy-Stream $d ($out = [System.IO.File]::OpenWrite($dst))
-  } Finally { Cleanup $in; Cleanup $out; Cleanup $d }
-}
-
-Function Copy-Stream($src, $dst) { $b = New-Object Byte[] 4096; while (($i = $src.Read($b, 0, $b.Length)) -ne 0) { $dst.Write($b, 0, $i) } }
-
 Function Check-Files($h) {
   return $h.GetEnumerator() | ForEach-Object {
     $dst = Unresolve-Path $_.Value.target
@@ -44,9 +32,8 @@ Function Get-MD5Sum($src) {
 
 Function Invoke-Input($in) {
   $in = Unresolve-Path $in
-  Decode-Base64File $in ($decoded = "$($in).ps1")
-  $expr = Get-Content $decoded | Out-String
-  Remove-Item $in,$decoded -Force
+  $expr = Get-Content $in | Out-String
+  Remove-Item $in -Force
   try {
     return Invoke-Expression "$expr"
   }

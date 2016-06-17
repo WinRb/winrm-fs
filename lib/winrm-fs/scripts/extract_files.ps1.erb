@@ -1,5 +1,4 @@
 trap {$e = $_.Exception; $e.InvocationInfo.ScriptName; do {$e.Message; $e = $e.InnerException} while ($e); break;}
-function Decode-Base64File($src, $dst) {folder (split-path $dst);sc -force -Encoding Byte -Path $dst -Value ([Convert]::FromBase64String([IO.File]::ReadAllLines($src)))}
 function Copy-Stream($src, $dst) {$b = New-Object Byte[] 4096; while (($i = $src.Read($b, 0, $b.Length)) -ne 0) { $dst.Write($b, 0, $i) } }
 function Resolve-ProviderPath{ $input | % {if ($_){(Resolve-Path $_).ProviderPath} else{$null}} }
 function Get-FrameworkVersion { "Full", "Client" | % {([version](gp "HKLM:\Software\Microsoft\NET Framework Setup\NDP\v4\$_").Version)} | select -first 1}
@@ -14,32 +13,15 @@ Function Decode-Files($hash) {
   foreach ($key in $hash.keys) {
     $value = $hash[$key]
     $tmp, $tzip, $dst = $Key, $Value["tmpzip"], $Value["dst"]
-    if(!$tmp.StartsWith("clean")) {
-      $sMd5 = (gi $tmp).BaseName.Replace("b64-", "")
-      $decoded = if ($tzip -ne $null) { $tzip } else { $dst }
-      Decode-Base64File $tmp $decoded
-      rm $tmp -Force
-      $dMd5 = Get-MD5Sum $decoded
-      $verifies = $sMd5 -like $dMd5
-    }
     if ($tzip) {Unzip-File $tzip $dst}
-    New-Object psobject -Property @{dst=$dst;verifies=$verifies;src_md5=$sMd5;dst_md5=$dMd5;tmpfile=$tmp;tmpzip=$tzip}
-  }
-}
-
-Function Get-MD5Sum($src) {
-  if ($src -and (test-path $src)) {
-  use ($c = New-Object -TypeName Security.Cryptography.MD5CryptoServiceProvider) {
-    use ($in = (gi $src).OpenRead()) {([BitConverter]::ToString($c.ComputeHash($in))).Replace("-", "").ToLower()}}
+    New-Object psobject -Property @{dst=$dst;src_md5=$key;tmpfile=$tmp;tmpzip=$tzip}
   }
 }
 
 Function Invoke-Input($in) {
   $in = $in | rpp
-  $d = "$($in).ps1"
-  Decode-Base64File $in $d
-  $expr = gc $d | Out-String
-  rm $in,$d -Force
+  $expr = gc $in | Out-String
+  rm $in -Force
   iex "$expr"
 }
 
