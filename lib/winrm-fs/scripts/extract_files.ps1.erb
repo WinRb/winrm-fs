@@ -12,9 +12,9 @@ set-alias RPP -Value Resolve-ProviderPath
 Function Decode-Files($hash) {
   foreach ($key in $hash.keys) {
     $value = $hash[$key]
-    $tmp, $tzip, $dst = $Key, $Value["tmpzip"], $Value["dst"]
+    $tzip, $dst = $Value["tmpzip"], $Value["dst"]
     if ($tzip) {Unzip-File $tzip $dst}
-    New-Object psobject -Property @{dst=$dst;src_md5=$key;tmpfile=$tmp;tmpzip=$tzip}
+    New-Object psobject -Property @{dst=$dst;src_md5=$key;tmpzip=$tzip}
   }
 }
 

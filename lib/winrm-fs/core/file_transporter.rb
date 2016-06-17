@@ -294,11 +294,11 @@ module WinRM
           file_data = files.select { |_, data| data.key?('tmpzip') }
 
           i = 0
-          result = file_data.map do |_, data|
+          result = file_data.map do |md5, data|
             val = { 'dst' => data['dst'] }
             val['tmpzip'] = data['tmpzip'] if data['tmpzip']
 
-            [data['dest'] || "clean#{i += 1}", val]
+            [md5, val]
           end
 
           ps_hash(Hash[result])
