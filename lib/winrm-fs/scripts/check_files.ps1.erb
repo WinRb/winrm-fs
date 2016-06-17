@@ -1,7 +1,7 @@
 $hash_file = <%= hash_file %>
 
 Function Cleanup($disposable) {
-  if ($disposable -ne $null) {
+  if (($disposable -ne $null) -and ($disposable.GetType().GetMethod("Dispose") -ne $null)) {
     $disposable.Dispose()
   }
 }
