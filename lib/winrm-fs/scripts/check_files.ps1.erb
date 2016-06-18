@@ -27,7 +27,7 @@ Function Check-Files($h) {
 
 Function Get-MD5Sum($src) {
   Try {
-    $c = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+    $c = [System.Security.Cryptography.MD5]::Create()
     $bytes = $c.ComputeHash(($in = (Get-Item $src).OpenRead()))
     return ([System.BitConverter]::ToString($bytes)).Replace("-", "").ToLower()
   } 

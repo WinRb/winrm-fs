@@ -2,7 +2,7 @@ $p = $ExecutionContext.SessionState.Path
 $path = $p.GetUnresolvedProviderPathFromPSPath("<%= path %>")
 
 if (Test-Path $path -PathType Leaf) {
-  $cryptoProv = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+  $cryptoProv = [System.Security.Cryptography.MD5]::Create()
   $file = [System.IO.File]::Open($path,
       [System.IO.Filemode]::Open, [System.IO.FileAccess]::Read)
   $md5 = ([System.BitConverter]::ToString($cryptoProv.ComputeHash($file)))
