@@ -8,20 +8,6 @@ trap {
   break
 }
 
-function Get-FrameworkVersion {
-  "Full", "Client" | % {
-    ([version](gp "HKLM:\Software\Microsoft\NET Framework Setup\NDP\v4\$_").Version)
-  } | select -first 1
-}
-
-function Test-NETStack($Version){
-  Get-FrameworkVersion -ge $Version
-}
-
-function Test-IOCompression {
-  ($PSVersionTable.PSVersion.Major -ge 3) -and (Test-NETStack '4.5')
-}
-
 function folder($path){
   $path | ? {-not (test-path $_)} | % {$null = mkdir $_}
 }
@@ -40,11 +26,16 @@ Function Unzip-File($src, $dst) {
   $dst_parent = Split-Path -Path $dst -Parent
   if(!(Test-Path $dst_parent)) { $dst = $dst_parent }
   folder $unpack, $dst
-  if (Test-IOCompression) {
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [IO.Compression.ZipFile]::ExtractToDirectory($src, $unpack)
+  try {
+    try{
+      [IO.Compression.ZipFile]::ExtractToDirectory($src, $unpack)
+    }
+    catch {
+      Add-Type -AssemblyName System.IO.Compression -ErrorAction Stop
+      [IO.Compression.ZipFile]::ExtractToDirectory($src, $unpack)
+    }
   }
-  else {
+  catch {
     Try {
       $s = New-Object -ComObject Shell.Application
       ($s.NameSpace($unpack)).CopyHere(($s.NameSpace($src)).Items(), 0x610)
