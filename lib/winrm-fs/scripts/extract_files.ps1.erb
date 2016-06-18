@@ -31,7 +31,7 @@ Function Unzip-File($src, $dst) {
       [IO.Compression.ZipFile]::ExtractToDirectory($src, $unpack)
     }
     catch {
-      Add-Type -AssemblyName System.IO.Compression -ErrorAction Stop
+      Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
       [IO.Compression.ZipFile]::ExtractToDirectory($src, $unpack)
     }
   }
