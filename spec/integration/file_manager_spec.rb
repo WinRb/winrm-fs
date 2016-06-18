@@ -5,7 +5,7 @@ describe WinRM::FS::FileManager do
   let(:dest_dir) { File.join(subject.temp_dir, "winrm_#{rand(2**16)}") }
   let(:temp_upload_dir) { '$env:TEMP/winrm-upload' }
   let(:spec_dir) { File.expand_path(File.dirname(File.dirname(__FILE__))) }
-  let(:this_file) { __FILE__ }
+  let(:this_file) { Pathname.new(__FILE__) }
   let(:service) { winrm_connection }
 
   subject { WinRM::FS::FileManager.new(service) }
@@ -40,7 +40,7 @@ describe WinRM::FS::FileManager do
   end
 
   context 'upload file' do
-    let(:dest_file) { File.join(dest_dir, File.basename(this_file)) }
+    let(:dest_file) { Pathname.new(File.join(dest_dir, File.basename(this_file))) }
 
     before(:each) do
       expect(subject.delete(dest_dir)).to be true
@@ -108,8 +108,8 @@ describe WinRM::FS::FileManager do
         |bytes_copied, total_bytes, local_path, remote_path|
         expect(total_bytes).to be > 0
         total_bytes_copied = bytes_copied
-        expect(local_path).to eq(this_file)
-        expect(remote_path).to eq(dest_file)
+        expect(local_path).to eq(this_file.to_s)
+        expect(remote_path).to eq(dest_file.to_s)
         block_called = true
       end
       expect(total_bytes_copied).to eq(total)

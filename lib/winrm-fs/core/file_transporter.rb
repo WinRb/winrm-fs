@@ -74,6 +74,7 @@ module WinRM
         def upload(locals, remote)
           files = nil
           report = nil
+          remote = remote.to_s
 
           elapsed1 = Benchmark.measure do
             files = make_files_hash(Array(locals), remote)
@@ -311,6 +312,7 @@ module WinRM
         def make_files_hash(locals, remote)
           hash = {}
           locals.each do |local|
+            local = local.to_s
             expanded = File.expand_path(local)
             expanded += local[-1] if local.end_with?('/', '\\')
 
