@@ -278,7 +278,6 @@ module WinRM
         def extract_files_ps_hash(files)
           file_data = files.select { |_, data| data.key?('tmpzip') }
 
-          i = 0
           result = file_data.map do |md5, data|
             val = { 'dst' => data['dst'] }
             val['tmpzip'] = data['tmpzip'] if data['tmpzip']
@@ -439,7 +438,10 @@ module WinRM
         end
 
         def stream_command(encoded_bytes)
-          "$bytes=[Convert]::FromBase64String('#{encoded_bytes}');$fileStream.Write($bytes, 0, $bytes.length)"
+          <<-EOS
+            $bytes=[Convert]::FromBase64String('#{encoded_bytes}')
+            $fileStream.Write($bytes, 0, $bytes.length)
+          EOS
         end
 
         # Uploads a local file.
