@@ -393,7 +393,7 @@ module WinRM
           if exitcode != 0
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
               "(exitcode: #{exitcode})\n#{pretty_stderr}"
-          elsif stderr != '\r\n' && stderr != ''
+          elsif pretty_stderr != '\r\n' && pretty_stderr != ''
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
               "(exitcode: 0), but stderr present\n#{pretty_stderr}"
           end
