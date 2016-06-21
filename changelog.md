@@ -1,5 +1,8 @@
 # WinRM-fs Gem Changelog
 
+# 0.4.3
+- Fix error handling with wmf5, filtering out progress output from inspected stderr.
+
 # 0.4.2
 - Improved Powershell error handling in metadata checking.
 
