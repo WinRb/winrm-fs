@@ -123,7 +123,7 @@ module WinRM
         # @api private
         attr_reader :logger
 
-        # @return [Winrm::Commandshell] a WinRM Commandshell
+        # @return [Winrm::Shells::Powershell] a WinRM Powershell shell
         # @api private
         attr_reader :shell
 
