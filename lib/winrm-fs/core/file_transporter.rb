@@ -358,7 +358,7 @@ module WinRM
         # @return [Hash] report hash, keyed by the local MD5 digest
         # @api private
         def parse_response(output)
-          exitcode = output[:exitcode]
+          exitcode = output.exitcode
           stderr = output.stderr
 
           if exitcode != 0

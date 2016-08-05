@@ -44,7 +44,7 @@ module WinRM
       def create_dir(path)
         @logger.debug("create_dir: #{path}")
         script = WinRM::FS::Scripts.render('create_dir', path: path)
-        @connection.shell(:powershell) { |e| e.run(script)[:exitcode] == 0 }
+        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
       end
 
       # Deletes the file or directory at the specified path
@@ -53,7 +53,7 @@ module WinRM
       def delete(path)
         @logger.debug("deleting: #{path}")
         script = WinRM::FS::Scripts.render('delete', path: path)
-        @connection.shell(:powershell) { |e| e.run(script)[:exitcode] == 0 }
+        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
       end
 
       # Downloads the specified remote file to the specified local path
@@ -63,7 +63,7 @@ module WinRM
         @logger.debug("downloading: #{remote_path} -> #{local_path}")
         script = WinRM::FS::Scripts.render('download', path: remote_path)
         output = @connection.shell(:powershell) { |e| e.run(script) }
-        return false if output[:exitcode] != 0
+        return false if output.exitcode != 0
         contents = output.stdout.gsub('\n\r', '')
         out = Base64.decode64(contents)
         IO.binwrite(local_path, out)
@@ -76,7 +76,7 @@ module WinRM
       def exists?(path)
         @logger.debug("exists?: #{path}")
         script = WinRM::FS::Scripts.render('exists', path: path)
-        @connection.shell(:powershell) { |e| e.run(script)[:exitcode] == 0 }
+        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
       end
 
       # Gets the current user's TEMP directory on the remote system, for example
