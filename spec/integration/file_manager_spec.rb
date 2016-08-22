@@ -57,6 +57,12 @@ describe WinRM::FS::FileManager do
       subject.delete('c:/winrmtest.rb')
     end
 
+    it 'should upload just filename' do
+      subject.upload(this_file, 'winrmtest.rb')
+      expect(subject).to have_created('winrmtest.rb').with_content(this_file)
+      subject.delete('winrmtest.rb')
+    end
+
     it 'should upload using relative file path' do
       subject.upload('./spec/integration/file_manager_spec.rb', dest_file)
       expect(subject).to have_created(dest_file).with_content(this_file)

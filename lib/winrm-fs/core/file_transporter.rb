@@ -416,16 +416,18 @@ module WinRM
           chunk, bytes = 1, 0
           buffer = ''
           shell.run(<<-EOS
-            $parent = Split-Path "#{dest}"
-            if(!(Test-path $parent)) { mkdir $parent | Out-Null}
+            $to = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath("#{dest}")
+            $parent = Split-Path $to
+            if(!(Test-path $parent)) { mkdir $parent | Out-Null }
             $fileStream = New-Object -TypeName System.IO.FileStream -ArgumentList @(
-                "#{dest}",
+                $to,
                 [system.io.filemode]::Create,
                 [System.io.FileAccess]::Write,
                 [System.IO.FileShare]::ReadWrite
             )
             EOS
           )
+
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
             shell.run(stream_command([buffer].pack(BASE64_PACK)))
