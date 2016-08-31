@@ -6,7 +6,7 @@ platform:
 
 environment:
   winrm_user: test_user
-  winrm_pass: Pass@word1
+  winrm_password: Pass@word1
 
   matrix:
     - ruby_version: "21"
@@ -19,7 +19,7 @@ branches:
     - master
 
 install:
-  - ps: net user /add $env:winrm_user $env:winrm_pass
+  - ps: net user /add $env:winrm_user $env:winrm_password
   - ps: net localgroup administrators $env:winrm_user /add
   - ps: winrm set winrm/config/client/auth '@{Basic="true"}'
   - ps: winrm set winrm/config/service/auth '@{Basic="true"}'

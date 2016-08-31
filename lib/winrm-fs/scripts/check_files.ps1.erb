@@ -1,19 +1,10 @@
-$host.ui.RawUI.WindowSize.Width=256
-$hash_file = "<%= hash_file %>"
+$hash_file = <%= hash_file %>
 
-Function Cleanup($o) { if (($o -ne $null) -and ($o.GetType().GetMethod("Dispose") -ne $null)) { $o.Dispose() } }
-
-Function Decode-Base64File($src, $dst) {
-  Try {
-    $in = (Get-Item $src).OpenRead()
-    $b64 = New-Object -TypeName System.Security.Cryptography.FromBase64Transform
-    $m = [System.Security.Cryptography.CryptoStreamMode]::Read
-    $d = New-Object -TypeName System.Security.Cryptography.CryptoStream $in,$b64,$m
-    Copy-Stream $d ($out = [System.IO.File]::OpenWrite($dst))
-  } Finally { Cleanup $in; Cleanup $out; Cleanup $d }
+Function Cleanup($disposable) {
+  if (($disposable -ne $null) -and ($disposable.GetType().GetMethod("Dispose") -ne $null)) {
+    $disposable.Dispose()
+  }
 }
-
-Function Copy-Stream($src, $dst) { $b = New-Object Byte[] 4096; while (($i = $src.Read($b, 0, $b.Length)) -ne 0) { $dst.Write($b, 0, $i) } }
 
 Function Check-Files($h) {
   return $h.GetEnumerator() | ForEach-Object {
@@ -36,25 +27,23 @@ Function Check-Files($h) {
 
 Function Get-MD5Sum($src) {
   Try {
-    $c = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+    $c = [System.Security.Cryptography.MD5]::Create()
     $bytes = $c.ComputeHash(($in = (Get-Item $src).OpenRead()))
     return ([System.BitConverter]::ToString($bytes)).Replace("-", "").ToLower()
-  } Finally { Cleanup $c; Cleanup $in }
-}
-
-Function Invoke-Input($in) {
-  $in = Unresolve-Path $in
-  Decode-Base64File $in ($decoded = "$($in).ps1")
-  $expr = Get-Content $decoded | Out-String
-  Remove-Item $in,$decoded -Force
-  try {
-    return Invoke-Expression "$expr"
-  }
-  catch {
-    throw "There was an error invoking '$expr': `n$($_ | Out-String)"
+  } 
+  Finally {
+    Cleanup $c
+    Cleanup $in
   }
 }
 
-Function Unresolve-Path($p) { if ($p -eq $null) { return $null } else { return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p) } }
+Function Unresolve-Path($path) {
+  if ($path -eq $null) {
+    return $null
+  }
+  else {
+    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path)
+  }
+}
 
-Check-Files (Invoke-Input $hash_file) | ConvertTo-Csv -NoTypeInformation
+Check-Files $hash_file | ConvertTo-Csv -NoTypeInformation

@@ -8,8 +8,8 @@ Files may be copied from the local machine to the winrm endpoint. Individual fil
 ```ruby
 require 'winrm-fs'
 
-service = WinRM::WinRMWebService.new(...
-file_manager = WinRM::FS::FileManager.new(service)
+connection = WinRM::Connection.new(...
+file_manager = WinRM::FS::FileManager.new(connection)
 
 # upload file.txt from the current working directory
 file_manager.upload('file.txt', 'c:/file.txt')
@@ -25,6 +25,9 @@ file_manager.upload([
 ], '$env:ProgramData')
 ```
 
+### Optimizing WinRM settings
+Since winrm-fs 1.0/winrm 2.0, files are uploaded using the PSRP protocol and transfer speeds are dramatically improved from previous versions. This is largely due to the fact that the size of chunks that can be transferred at one time are now governed by the `MaxEnvelopeSizekb` winrm configuration setting on the endpoint. This default to 500 on Windows 2012 R2 and 150 on Windows 2008 R2. You may experience much faster transfer rates on 2008 R2 by increasing this setting.
+
 ### Handling progress events
 If you want to implement your own custom progress handling, you can pass a code
 block and use the proggress data that `upload` yields to this block:
@@ -39,16 +42,6 @@ end
 If you're having trouble, first of all its most likely a network or WinRM configuration
 issue. Take a look at the [WinRM gem troubleshooting](https://github.com/WinRb/WinRM#troubleshooting)
 first.
-
-The most [common error](https://github.com/WinRb/winrm-fs/issues/1) with this gem is getting a 500 error because your maxConcurrentOperationsPerUser limit has been reached.
-
-```
-The WS-Management service cannot process the request. This user is allowed a
-maximum number of 1500 concurrent operations, which has been exceeded. Close
-existing operations for this user, or raise the quota for this user.
-```
-
-You can workaround this by increasing your operations per user quota.
 
 ## Contributing
 

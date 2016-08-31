@@ -23,10 +23,10 @@ module WinRM
     # Perform file transfer operations between a local machine and winrm endpoint
     class FileManager
       # Creates a new FileManager instance
-      # @param [WinRMWebService] WinRM web service client
-      def initialize(service)
-        @service = service
-        @logger = service.logger
+      # @param [WinRM::Connection] WinRM web connection client
+      def initialize(connection)
+        @connection = connection
+        @logger = connection.logger
       end
 
       # Gets the MD5 checksum of the specified file if it exists,
@@ -35,7 +35,7 @@ module WinRM
       def checksum(path)
         @logger.debug("checksum: #{path}")
         script = WinRM::FS::Scripts.render('checksum', path: path)
-        @service.create_executor { |e| e.run_powershell_script(script).stdout.chomp }
+        @connection.shell(:powershell) { |e| e.run(script).stdout.chomp }
       end
 
       # Create the specifed directory recursively
@@ -44,7 +44,7 @@ module WinRM
       def create_dir(path)
         @logger.debug("create_dir: #{path}")
         script = WinRM::FS::Scripts.render('create_dir', path: path)
-        @service.create_executor { |e| e.run_powershell_script(script)[:exitcode] == 0 }
+        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
       end
 
       # Deletes the file or directory at the specified path
@@ -53,7 +53,7 @@ module WinRM
       def delete(path)
         @logger.debug("deleting: #{path}")
         script = WinRM::FS::Scripts.render('delete', path: path)
-        @service.create_executor { |e| e.run_powershell_script(script)[:exitcode] == 0 }
+        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
       end
 
       # Downloads the specified remote file to the specified local path
@@ -62,8 +62,8 @@ module WinRM
       def download(remote_path, local_path)
         @logger.debug("downloading: #{remote_path} -> #{local_path}")
         script = WinRM::FS::Scripts.render('download', path: remote_path)
-        output = @service.create_executor { |e| e.run_powershell_script(script) }
-        return false if output[:exitcode] != 0
+        output = @connection.shell(:powershell) { |e| e.run(script) }
+        return false if output.exitcode != 0
         contents = output.stdout.gsub('\n\r', '')
         out = Base64.decode64(contents)
         IO.binwrite(local_path, out)
@@ -76,7 +76,7 @@ module WinRM
       def exists?(path)
         @logger.debug("exists?: #{path}")
         script = WinRM::FS::Scripts.render('exists', path: path)
-        @service.create_executor { |e| e.run_powershell_script(script)[:exitcode] == 0 }
+        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
       end
 
       # Gets the current user's TEMP directory on the remote system, for example
@@ -84,7 +84,7 @@ module WinRM
       # @return [String] Full path to the temp directory
       def temp_dir
         @guest_temp ||= begin
-          (@service.create_executor { |e| e.run_cmd('echo %TEMP%') }).stdout.chomp.gsub('\\', '/')
+          (@connection.shell(:powershell) { |e| e.run('$env:TEMP') }).stdout.chomp.gsub('\\', '/')
         end
       end
 
@@ -107,8 +107,8 @@ module WinRM
       # @yieldparam [String] Target path on the winrm endpoint
       # @return [Fixnum] The total number of bytes copied
       def upload(local_path, remote_path, &block)
-        @service.create_executor do |executor|
-          file_transporter ||= WinRM::FS::Core::FileTransporter.new(executor)
+        @connection.shell(:powershell) do |shell|
+          file_transporter ||= WinRM::FS::Core::FileTransporter.new(shell)
           file_transporter.upload(local_path, remote_path, &block)[0]
         end
       end

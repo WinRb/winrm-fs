@@ -1,5 +1,3 @@
-auth_type: plaintext
-endpoint: "http://192.168.137.20:5985/wsman"
-options:
-  user: vagrant
-  pass: vagrant
+endpoint: "http://localhost:55985/wsman"
+user: vagrant
+password: vagrant

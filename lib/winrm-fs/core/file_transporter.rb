@@ -41,8 +41,8 @@ module WinRM
       # sessions being invoked which can be 2 orders of magnitude more
       # expensive than vanilla CMD commands.
       #
-      # This object is supported by either a `CommandExecutor` instance as it
-      # depends on the `#run_cmd` and `#run_powershell_script` API contracts.
+      # This object is supported by a `PowerShell` instance as it
+      # depends on the `#run` API contract.
       #
       # An optional logger can be supplied, assuming it can respond to the
       # `#debug` and `#debug?` messages.
@@ -50,12 +50,12 @@ module WinRM
       # @author Fletcher Nichol <fnichol@nichol.ca>
       # @author Matt Wrock <matt@mattwrock.com>
       class FileTransporter
-        # Creates a FileTransporter given a CommandExecutor object.
+        # Creates a FileTransporter given a PowerShell object.
         #
-        # @param executor [CommandExecutor] a winrm CommandExecutor object
-        def initialize(executor, opts = {})
-          @executor  = executor
-          @logger = executor.service.logger
+        # @param shell [PowerShell] a winrm PowerShell object
+        def initialize(shell, opts = {})
+          @shell  = shell
+          @logger = shell.logger
           @id_generator = opts.fetch(:id_generator) { -> { SecureRandom.uuid } }
         end
 
@@ -74,6 +74,7 @@ module WinRM
         def upload(locals, remote)
           files = nil
           report = nil
+          remote = remote.to_s
 
           elapsed1 = Benchmark.measure do
             files = make_files_hash(Array(locals), remote)
@@ -91,7 +92,7 @@ module WinRM
           end
 
           elapsed3 = Benchmark.measure do
-            report = decode_files(files)
+            report = extract_files(files)
             merge_with_report!(files, report)
             cleanup(files)
           end
@@ -100,19 +101,13 @@ module WinRM
             "Uploaded #{files.keys.size} items " \
             "dirty_check: #{duration(elapsed1.real)} " \
             "stream_files: #{duration(elapsed2.real)} " \
-            "decode: #{duration(elapsed3.real)} " \
+            "extract: #{duration(elapsed3.real)} " \
           )
 
           [total_size, files]
         end
 
         private
-
-        # @return [Integer] the maximum number of bytes that can be supplied on
-        #   a Windows CMD prompt without exceeded the maximum command line
-        #   length
-        # @api private
-        MAX_ENCODED_WRITE = 8000
 
         # @return [String] the Array pack template for Base64 encoding a stream
         #   of data
@@ -128,9 +123,24 @@ module WinRM
         # @api private
         attr_reader :logger
 
-        # @return [Winrm::CommandExecutor] a WinRM CommandExecutor
+        # @return [Winrm::Shells::Powershell] a WinRM Powershell shell
         # @api private
-        attr_reader :executor
+        attr_reader :shell
+
+        # @return [Integer] the maximum number of bytes to send per request
+        #   when streaming a file. This is optimized to send as much data
+        #   as allowed in a single PSRP fragment
+        # @api private
+        def max_encoded_write
+          @max_encoded_write ||= begin
+            empty_command = WinRM::PSRP::MessageFactory.create_pipeline_message(
+              '00000000-0000-0000-0000-000000000000',
+              '00000000-0000-0000-0000-000000000000',
+              stream_command('')
+            )
+            shell.max_fragment_blob_size - empty_command.bytes.length
+          end
+        end
 
         # Examines the files and corrects the file destination if it is
         # targeting an existing folder. In this case, the destination path
@@ -198,9 +208,9 @@ module WinRM
         # @api private
         def check_files(files)
           logger.debug 'Running check_files.ps1'
-          hash_file = create_remote_hash_file(check_files_ps_hash(files))
+          hash_file = check_files_ps_hash(files)
           script = WinRM::FS::Scripts.render('check_files', hash_file: hash_file)
-          parse_response(executor.run_powershell_script(script))
+          parse_response(shell.run(script))
         end
 
         # Constructs a collection of destination path/MD5 checksum pairs as a
@@ -236,63 +246,44 @@ module WinRM
           end
         end
 
-        # Creates a remote Base64-encoded temporary file containing a
-        # PowerShell hash table.
-        #
-        # @param hash [String] a String representation of a PowerShell hash
-        #   table
-        # @return [String] the remote path to the temporary file
-        # @api private
-        def create_remote_hash_file(hash)
-          hash_file = "$env:TEMP\\hash-#{@id_generator.call}.txt"
-          hash.lines.each { |line| logger.debug line.chomp }
-          StringIO.open(hash) { |io| stream_upload(io, hash_file) }
-          hash_file
-        end
-
-        # Runs the decode_files PowerShell script against a collection of
+        # Runs the extract_files PowerShell script against a collection of
         # temporary file/destination path pairs. The PowerShell script returns
         # its results as a CSV-formatted report which is converted into a Ruby
-        # Hash. The script will not be invoked if there are no "dirty" files
+        # Hash. The script will not be invoked if there are no zip files
         # present in the incoming files Hash.
         #
         # @param files [Hash] files hash, keyed by the local MD5 digest
         # @return [Hash] a report hash, keyed by the local MD5 digest
         # @api private
-        def decode_files(files)
-          decoded_files = decode_files_ps_hash(files)
+        def extract_files(files)
+          extracted_files = extract_files_ps_hash(files)
 
-          if decoded_files == ps_hash({})
-            logger.debug 'No remote files to decode, skipping'
+          if extracted_files == ps_hash({})
+            logger.debug 'No remote files to extract, skipping'
             {}
           else
-            logger.debug 'Running decode_files.ps1'
-            hash_file = create_remote_hash_file(decoded_files)
-            script = WinRM::FS::Scripts.render('decode_files', hash_file: hash_file)
+            logger.debug 'Running extract_files.ps1'
+            script = WinRM::FS::Scripts.render('extract_files', hash_file: extracted_files)
 
-            parse_response(executor.run_powershell_script(script))
+            parse_response(shell.run(script))
           end
         end
 
         # Constructs a collection of temporary file/destination path pairs for
-        # all "dirty" files as a String representation of the contents of a
-        # PowerShell Hash Table. A "dirty" file is one which has the
-        # `"chk_dirty"` option set to `"True"` in the incoming files Hash.
+        # all zipped folders as a String representation of the contents of a
+        # PowerShell Hash Table.
         #
         # @param files [Hash] files hash, keyed by the local MD5 digest
         # @return [String] the inner contents of a PowerShell Hash Table
         # @api private
-        def decode_files_ps_hash(files)
-          file_data = files.select do |_, data|
-            data['chk_dirty'] == 'True' || data.key?('tmpzip')
-          end
+        def extract_files_ps_hash(files)
+          file_data = files.select { |_, data| data.key?('tmpzip') }
 
-          i = 0
-          result = file_data.map do |_, data|
+          result = file_data.map do |md5, data|
             val = { 'dst' => data['dst'] }
             val['tmpzip'] = data['tmpzip'] if data['tmpzip']
 
-            [data['tmpfile'] || "clean#{i += 1}", val]
+            [md5, val]
           end
 
           ps_hash(Hash[result])
@@ -321,6 +312,7 @@ module WinRM
         def make_files_hash(locals, remote)
           hash = {}
           locals.each do |local|
+            local = local.to_s
             expanded = File.expand_path(local)
             expanded += local[-1] if local.end_with?('/', '\\')
 
@@ -358,20 +350,6 @@ module WinRM
           ' ' * depth
         end
 
-        # Parses CLIXML String into regular String (without any XML syntax).
-        # Inspired by https://github.com/WinRb/WinRM/issues/106.
-        #
-        # @param  clixml [String] clixml text
-        # @return [String] parsed clixml into String
-        def clixml_to_s(clixml)
-          doc = REXML::Document.new(clixml)
-          text = doc.get_elements('//S').map(&:text).join
-          text.gsub(/_x(\h\h\h\h)_/) do
-            code = Regexp.last_match[1]
-            code.hex.chr
-          end
-        end
-
         # Parses response of a PowerShell script or CMD command which contains
         # a CSV-formatted document in the standard output stream.
         #
@@ -380,22 +358,15 @@ module WinRM
         # @return [Hash] report hash, keyed by the local MD5 digest
         # @api private
         def parse_response(output)
-          exitcode = output[:exitcode]
+          exitcode = output.exitcode
           stderr = output.stderr
-          if stderr.include?('The command line is too long')
-            # The powershell script which should result in `output` parameter
-            # is too long, remove some newlines, comments, etc from it.
-            fail StandardError, 'The command line is too long' \
-              ' (powershell script is too long)'
-          end
-          pretty_stderr = clixml_to_s(stderr)
 
           if exitcode != 0
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
-              "(exitcode: #{exitcode})\n#{pretty_stderr}"
-          elsif pretty_stderr != '\r\n' && pretty_stderr != ''
+              "(exitcode: #{exitcode})\n#{stderr}"
+          elsif stderr != '\r\n' && stderr != ''
             fail FileTransporterFailed, "[#{self.class}] Upload failed " \
-              "(exitcode: 0), but stderr present\n#{pretty_stderr}"
+              "(exitcode: 0), but stderr present\n#{stderr}"
           end
 
           logger.debug 'Parsing CSV Response'
@@ -441,42 +412,59 @@ module WinRM
         #   the number of bytes transferred to the remote host
         # @api private
         def stream_upload(input_io, dest)
-          dest_cmd = dest.sub('$env:TEMP', '%TEMP%')
-          read_size = (MAX_ENCODED_WRITE.to_i / 4) * 3
+          read_size = ((max_encoded_write - dest.length) / 4) * 3
           chunk, bytes = 1, 0
           buffer = ''
-          executor.run_cmd(%(echo|set /p=>"#{dest_cmd}")) # truncate empty file
+          shell.run(<<-EOS
+            $to = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath("#{dest}")
+            $parent = Split-Path $to
+            if(!(Test-path $parent)) { mkdir $parent | Out-Null }
+            $fileStream = New-Object -TypeName System.IO.FileStream -ArgumentList @(
+                $to,
+                [system.io.filemode]::Create,
+                [System.io.FileAccess]::Write,
+                [System.IO.FileShare]::ReadWrite
+            )
+            EOS
+          )
+
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
-            executor.run_cmd([buffer].pack(BASE64_PACK)
-              .insert(0, 'echo ').concat(%( >> "#{dest_cmd}")))
+            shell.run(stream_command([buffer].pack(BASE64_PACK)))
             logger.debug "Wrote chunk #{chunk} for #{dest}" if chunk % 25 == 0
             chunk += 1
             yield bytes if block_given?
           end
+          shell.run('$fileStream.Dispose()')
           buffer = nil # rubocop:disable Lint/UselessAssignment
 
           [chunk - 1, bytes]
         end
 
-        # Uploads a local file to a Base64-encoded temporary file.
+        def stream_command(encoded_bytes)
+          <<-EOS
+            $bytes=[Convert]::FromBase64String('#{encoded_bytes}')
+            $fileStream.Write($bytes, 0, $bytes.length)
+          EOS
+        end
+
+        # Uploads a local file.
         #
         # @param src [String] path to a local file
-        # @param tmpfile [String] path to the temporary file on the remote
-        #   host
+        # @param dest [String] path to the file on the remote host
         # @return [Integer,Integer] the number of resulting upload chunks and
         #   the number of bytes transferred to the remote host
         # @api private
-        def stream_upload_file(src, tmpfile, &block)
-          logger.debug "Uploading #{src} to encoded tmpfile #{tmpfile}"
+        def stream_upload_file(src, dest, &block)
+          logger.debug "Uploading #{src} to #{dest}"
           chunks, bytes = 0, 0
           elapsed = Benchmark.measure do
             File.open(src, 'rb') do |io|
-              chunks, bytes = stream_upload(io, tmpfile, &block)
+              chunks, bytes = stream_upload(io, dest, &block)
             end
           end
           logger.debug(
-            "Finished uploading #{src} to encoded tmpfile #{tmpfile} " \
+            "Finished uploading #{src} to #{dest} " \
             "(#{bytes.to_f / 1000} KB over #{chunks} chunks) " \
             "in #{duration(elapsed.real)}"
           )
@@ -496,9 +484,8 @@ module WinRM
           files.each do |md5, data|
             src = data.fetch('src_zip', data['src'])
             if data['chk_dirty'] == 'True'
-              tmpfile = "$env:TEMP\\b64-#{md5}.txt"
-              response[md5] = { 'tmpfile' => tmpfile }
-              chunks, bytes = stream_upload_file(src, tmpfile) do |xfered|
+              response[md5] = { 'dest' => data['tmpzip'] || data['dst'] }
+              chunks, bytes = stream_upload_file(src, data['tmpzip'] || data['dst']) do |xfered|
                 yield data['src'], xfered
               end
               response[md5]['chunks'] = chunks

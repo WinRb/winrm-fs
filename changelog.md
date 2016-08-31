@@ -1,4 +1,6 @@
 # WinRM-fs Gem Changelog
+# 1.0.0
+- Using winrm v2. File uploads just got a whole lot faster!
 
 # 0.4.3
 - Fix error handling with wmf5, filtering out progress output from inspected stderr.
