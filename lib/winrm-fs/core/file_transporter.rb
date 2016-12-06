@@ -425,6 +425,16 @@ module WinRM
                 [System.io.FileAccess]::Write,
                 [System.IO.FileShare]::ReadWrite
             )
+
+            # Powershell caches ScrpitBlocks in a dictionary
+            # keyed on the script block text. Thats just great
+            # unless the script is super large and called a gillion
+            # times like we might do. In such a case it will saturate the
+            # Large Object Heap and lead to Out Of Memory exceptions
+            # for large files or folders. So we call the internal method
+            # ClearScriptBlockCache to clear it.
+            $bindingFlags= [Reflection.BindingFlags] "NonPublic,Static"
+            $method = [scriptblock].GetMethod("ClearScriptBlockCache", $bindingFlags)
             EOS
           )
 
@@ -443,6 +453,7 @@ module WinRM
 
         def stream_command(encoded_bytes)
           <<-EOS
+            if($method) { $method.Invoke($Null, $Null) }
             $bytes=[Convert]::FromBase64String('#{encoded_bytes}')
             $fileStream.Write($bytes, 0, $bytes.length)
           EOS

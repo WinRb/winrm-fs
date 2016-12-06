@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.0.1
+- Call ClearScriptBlockCache to prevent OutOfMemoryExceptions ClearScriptBlockCache
+
 # 1.0.0
 - Using winrm v2. File uploads just got a whole lot faster!
 
