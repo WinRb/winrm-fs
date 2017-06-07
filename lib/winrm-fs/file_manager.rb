@@ -32,9 +32,10 @@ module WinRM
       # Gets the MD5 checksum of the specified file if it exists,
       # otherwise ''
       # @param [String] The remote file path
-      def checksum(path)
-        @logger.debug("checksum: #{path}")
-        script = WinRM::FS::Scripts.render('checksum', path: path)
+      # @parms [String] The digest method
+      def checksum(path, digest = 'MD5')
+        @logger.debug("checksum with #{digest}: #{path}")
+        script = WinRM::FS::Scripts.render('checksum', path: path, digest: digest)
         @connection.shell(:powershell) { |e| e.run(script).stdout.chomp }
       end
 
