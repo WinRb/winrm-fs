@@ -2,12 +2,12 @@ $p = $ExecutionContext.SessionState.Path
 $path = $p.GetUnresolvedProviderPathFromPSPath("<%= path %>")
 
 if (Test-Path $path -PathType Leaf) {
-  $cryptoProv = [System.Security.Cryptography.MD5]::Create()
+  $cryptoProv = [System.Security.Cryptography.<%= digest %>]::Create()
   $file = [System.IO.File]::Open($path,
       [System.IO.Filemode]::Open, [System.IO.FileAccess]::Read)
-  $md5 = ([System.BitConverter]::ToString($cryptoProv.ComputeHash($file)))
-  $md5 = $md5.Replace("-","").ToLower()
+  $digest = ([System.BitConverter]::ToString($cryptoProv.ComputeHash($file)))
+  $digest = $digest.Replace("-","").ToLower()
   $file.Close()
 
-  Write-Output $md5
+  Write-Output $digest
 }
