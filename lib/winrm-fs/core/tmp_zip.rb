@@ -68,7 +68,7 @@ module WinRM
         #   responds to `#debug` and `#debug?` (default `nil`)
         def initialize(dir, logger = nil)
           @logger = logger || Logging.logger[self]
-          @dir = Pathname.new(dir)
+          @dir = clean_dirname(dir)
           @zip_io = Tempfile.open(['tmpzip-', '.zip'], binmode: true)
           write_zip
           @zip_io.close
@@ -97,6 +97,17 @@ module WinRM
         # @return [IO] the Zip file IO
         # @api private
         attr_reader :zip_io
+
+        # @return [Pathname] the pathname object representing dirname that
+        # doesn't have any of those ~ in it
+        # @api private
+        def clean_dirname(dir)
+          paths = Pathname.glob(dir)
+          if paths.length != 1
+            fail "Expected Pathname.glob(dir) to return only dir, got #{paths}"
+          end
+          paths.first
+        end
 
         # @return [Array<Pathname] all recursive files under the base
         #   directory, excluding directories
