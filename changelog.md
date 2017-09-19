@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.0.2
+- Fix `Pathname.glob` expansion of shortnames.
+
 # 1.0.1
 - Call ClearScriptBlockCache to prevent OutOfMemoryExceptions ClearScriptBlockCache
 
