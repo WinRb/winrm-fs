@@ -70,7 +70,7 @@ module WinRM
         # @param locals [Array<String>,String] one or more local file or
         #   directory paths
         # @param remote [String] the base destination path on the remote host
-        # @return [Hash] report hash, keyed by the local MD5 digest
+        # @return [Hash] report hash, keyed by the local SHA1 digest
         def upload(locals, remote)
           files = nil
           report = nil
@@ -147,8 +147,8 @@ module WinRM
         # will have the base name of the source file appended. This only
         # applies to file uploads and not to folder uploads.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
-        # @return [Hash] a report hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
+        # @return [Hash] a report hash, keyed by the local SHA1 digest
         # @api private
         def reconcile_destinations!(files)
           files.each do |_, data|
@@ -158,10 +158,10 @@ module WinRM
           end
         end
 
-        # Adds an entry to a files Hash (keyed by local MD5 digest) for a
+        # Adds an entry to a files Hash (keyed by local SHA1 digest) for a
         # directory. When a directory is added, a temporary Zip file is created
         # containing the contents of the directory and any file-related data
-        # such as MD5 digest, size, etc. will be referring to the Zip file.
+        # such as SHA1 digest, size, etc. will be referring to the Zip file.
         #
         # @param hash [Hash] hash to be mutated
         # @param dir [String] directory path to be Zipped and added
@@ -170,19 +170,19 @@ module WinRM
         def add_directory_hash!(hash, dir, remote)
           logger.debug "creating hash for directory #{remote}"
           zip_io = TmpZip.new(dir, logger)
-          zip_md5 = md5sum(zip_io.path)
+          zip_sha1 = sha1sum(zip_io.path)
 
-          hash[zip_md5] = {
+          hash[zip_sha1] = {
             'src'     => dir,
             'src_zip' => zip_io.path.to_s,
             'zip_io'  => zip_io,
-            'tmpzip'  => "#{TEMP_UPLOAD_DIRECTORY}\\tmpzip-#{zip_md5}.zip",
+            'tmpzip'  => "#{TEMP_UPLOAD_DIRECTORY}\\tmpzip-#{zip_sha1}.zip",
             'dst'     => "#{remote}\\#{File.basename(dir)}",
             'size'    => File.size(zip_io.path)
           }
         end
 
-        # Adds an entry to a files Hash (keyed by local MD5 digest) for a file.
+        # Adds an entry to a files Hash (keyed by local SHA1 digest) for a file.
         #
         # @param hash [Hash] hash to be mutated
         # @param local [String] file path
@@ -191,7 +191,7 @@ module WinRM
         def add_file_hash!(hash, local, remote)
           logger.debug "creating hash for file #{remote}"
 
-          hash[md5sum(local)] = {
+          hash[sha1sum(local)] = {
             'src'   => local,
             'dst'   => remote,
             'size'  => File.size(local)
@@ -199,12 +199,12 @@ module WinRM
         end
 
         # Runs the check_files PowerShell script against a collection of
-        # destination path/MD5 checksum pairs. The PowerShell script returns
+        # destination path/SHA1 checksum pairs. The PowerShell script returns
         # its results as a CSV-formatted report which is converted into a Ruby
         # Hash.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
-        # @return [Hash] a report hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
+        # @return [Hash] a report hash, keyed by the local SHA1 digest
         # @api private
         def check_files(files)
           logger.debug 'Running check_files.ps1'
@@ -213,16 +213,16 @@ module WinRM
           parse_response(shell.run(script))
         end
 
-        # Constructs a collection of destination path/MD5 checksum pairs as a
+        # Constructs a collection of destination path/SHA1 checksum pairs as a
         # String representation of the contents of a PowerShell Hash Table.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
         # @return [String] the inner contents of a PowerShell Hash Table
         # @api private
         def check_files_ps_hash(files)
-          hash = files.map do |md5, data|
+          hash = files.map do |sha1, data|
             [
-              md5,
+              sha1,
               {
                 'target' => data.fetch('tmpzip', data['dst']),
                 'src_basename' => File.basename(data['src']),
@@ -239,9 +239,9 @@ module WinRM
         # @param files [Hash] a files hash
         # @api private
         def cleanup(files)
-          files.select { |_, data| data.key?('zip_io') }.each do |md5, data|
+          files.select { |_, data| data.key?('zip_io') }.each do |sha1, data|
             data.fetch('zip_io').unlink
-            files.fetch(md5).delete('zip_io')
+            files.fetch(sha1).delete('zip_io')
             logger.debug "Cleaned up src_zip #{data['src_zip']}"
           end
         end
@@ -252,8 +252,8 @@ module WinRM
         # Hash. The script will not be invoked if there are no zip files
         # present in the incoming files Hash.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
-        # @return [Hash] a report hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
+        # @return [Hash] a report hash, keyed by the local SHA1 digest
         # @api private
         def extract_files(files)
           extracted_files = extract_files_ps_hash(files)
@@ -273,17 +273,17 @@ module WinRM
         # all zipped folders as a String representation of the contents of a
         # PowerShell Hash Table.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
         # @return [String] the inner contents of a PowerShell Hash Table
         # @api private
         def extract_files_ps_hash(files)
           file_data = files.select { |_, data| data.key?('tmpzip') }
 
-          result = file_data.map do |md5, data|
+          result = file_data.map do |sha1, data|
             val = { 'dst' => data['dst'] }
             val['tmpzip'] = data['tmpzip'] if data['tmpzip']
 
-            [md5, val]
+            [sha1, val]
           end
 
           ps_hash(Hash[result])
@@ -300,14 +300,14 @@ module WinRM
           format('(%dm%.2fs)', minutes, seconds)
         end
 
-        # Contructs a Hash of files or directories, keyed by the local MD5
+        # Contructs a Hash of files or directories, keyed by the local SHA1
         # digest. Each file entry has a source and destination set, at a
         # minimum.
         #
         # @param locals [Array<String>] a collection of local files or
         #   directories
         # @param remote [String] the base destination path on the remote host
-        # @return [Hash] files hash, keyed by the local MD5 digest
+        # @return [Hash] files hash, keyed by the local SHA1 digest
         # @api private
         def make_files_hash(locals, remote)
           hash = {}
@@ -327,17 +327,17 @@ module WinRM
           hash
         end
 
-        # @return [String] the MD5 digest of a local file
+        # @return [String] the SHA1 digest of a local file
         # @api private
-        def md5sum(local)
-          Digest::MD5.file(local).hexdigest
+        def sha1sum(local)
+          Digest::SHA1.file(local).hexdigest
         end
 
         # Destructively merges a report Hash into an existing files Hash.
         # **Note:** this method mutates the files Hash.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
-        # @param report [Hash] report hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
+        # @param report [Hash] report hash, keyed by the local SHA1 digest
         # @api private
         def merge_with_report!(files, report)
           files.merge!(report) { |_, oldval, newval| oldval.merge(newval) }
@@ -355,7 +355,7 @@ module WinRM
         #
         # @param output [WinRM::Output] output object with stdout, stderr, and
         #   exit code
-        # @return [Hash] report hash, keyed by the local MD5 digest
+        # @return [Hash] report hash, keyed by the local SHA1 digest
         # @api private
         def parse_response(output)
           exitcode = output.exitcode
@@ -374,7 +374,7 @@ module WinRM
 
           array = CSV.parse(output.stdout, headers: true).map(&:to_hash)
           array.each { |h| h.each { |key, value| h[key] = nil if value == '' } }
-          Hash[array.map { |entry| [entry.fetch('src_md5'), entry] }]
+          Hash[array.map { |entry| [entry.fetch('src_sha1'), entry] }]
         end
 
         # Converts a Ruby hash into a PowerShell hash table, represented in a
@@ -487,20 +487,20 @@ module WinRM
         # Base64-encoded temporary files. A "dirty" file is one which has the
         # `"chk_dirty"` option set to `"True"` in the incoming files Hash.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
-        # @return [Hash] a report hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
+        # @return [Hash] a report hash, keyed by the local SHA1 digest
         # @api private
         def stream_upload_files(files)
           response = {}
-          files.each do |md5, data|
+          files.each do |sha1, data|
             src = data.fetch('src_zip', data['src'])
             if data['chk_dirty'] == 'True'
-              response[md5] = { 'dest' => data['tmpzip'] || data['dst'] }
+              response[sha1] = { 'dest' => data['tmpzip'] || data['dst'] }
               chunks, bytes = stream_upload_file(src, data['tmpzip'] || data['dst']) do |xfered|
                 yield data['src'], xfered
               end
-              response[md5]['chunks'] = chunks
-              response[md5]['xfered'] = bytes
+              response[sha1]['chunks'] = chunks
+              response[sha1]['xfered'] = bytes
             else
               logger.debug "File #{data['dst']} is up to date, skipping"
             end
@@ -512,7 +512,7 @@ module WinRM
         # Calculates count based on the sum of base64 encoded content size
         # of all files base 64 that are dirty.
         #
-        # @param files [Hash] files hash, keyed by the local MD5 digest
+        # @param files [Hash] files hash, keyed by the local SHA1 digest
         # @return [Fixnum] total byte size
         # @api private
         def total_base64_transfer_size(files)
