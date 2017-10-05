@@ -16,18 +16,18 @@ Function Check-Files($h) {
     }
     New-Object psobject -Property @{
       chk_exists = ($exists = Test-Path $dst -PathType Leaf)
-      src_md5 = ($sMd5 = $_.Key)
-      dst_md5 = ($dMd5 = if ($exists) { Get-MD5Sum $dst } else { $null })
+      src_sha1 = ($sMd5 = $_.Key)
+      dst_sha1 = ($dMd5 = if ($exists) { Get-SHA1Sum $dst } else { $null })
       chk_dirty = ($dirty = if ($sMd5 -ne $dMd5) { $true } else { $false })
       verifies = if ($dirty -eq $false) { $true } else { $false }
       target_is_folder = $dst_changed
     }
-  } | Select-Object -Property chk_exists,src_md5,dst_md5,chk_dirty,verifies,target_is_folder
+  } | Select-Object -Property chk_exists,src_sha1,dst_sha1,chk_dirty,verifies,target_is_folder
 }
 
-Function Get-MD5Sum($src) {
+Function Get-SHA1Sum($src) {
   Try {
-    $c = [System.Security.Cryptography.MD5]::Create()
+    $c = [System.Security.Cryptography.SHA1]::Create()
     $bytes = $c.ComputeHash(($in = (Get-Item $src).OpenRead()))
     return ([System.BitConverter]::ToString($bytes)).Replace("-", "").ToLower()
   } 

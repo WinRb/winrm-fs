@@ -17,7 +17,7 @@ Function Decode-Files($hash) {
     $value = $hash[$key]
     $tzip, $dst = $Value["tmpzip"], $Value["dst"]
     if ($tzip) {Unzip-File $tzip $dst}
-    New-Object psobject -Property @{dst=$dst;src_md5=$key;tmpzip=$tzip}
+    New-Object psobject -Property @{dst=$dst;src_sha1=$key;tmpzip=$tzip}
   }
 }
 
