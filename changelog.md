@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.1.0
+- Convert MD5 hashes to SHA1.
+
 # 1.0.2
 - Fix `Pathname.glob` expansion of shortnames.
 
