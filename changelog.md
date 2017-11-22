@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.1.1
+- Remove empty items from powershell pipeline when extracting zip files
+
 # 1.1.0
 - Convert MD5 hashes to SHA1.
 

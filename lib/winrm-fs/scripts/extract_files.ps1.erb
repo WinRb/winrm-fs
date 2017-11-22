@@ -38,7 +38,7 @@ Function Unzip-File($src, $dst) {
   catch {
     Try {
       $s = New-Object -ComObject Shell.Application
-      ($s.NameSpace($unpack)).CopyHere(($s.NameSpace($src)).Items(), 0x610)
+      ($s.NameSpace($unpack)).CopyHere(($s.NameSpace($src)).Items(), 0x610) | Out-Null
     }
     Finally {
       [void][Runtime.Interopservices.Marshal]::ReleaseComObject($s)
