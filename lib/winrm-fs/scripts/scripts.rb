@@ -21,7 +21,8 @@ module WinRM
     module Scripts
       def self.render(template, context)
         template_path = File.expand_path(
-          "#{File.dirname(__FILE__)}/#{template}.ps1.erb")
+          "#{File.dirname(__FILE__)}/#{template}.ps1.erb"
+        )
         template = File.read(template_path)
         Erubis::Eruby.new(template).result(context)
       end

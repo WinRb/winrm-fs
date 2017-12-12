@@ -35,7 +35,7 @@ describe WinRM::FS::Core::TmpZip do
 
   let(:tmp_zip) { WinRM::FS::Core::TmpZip.new(src_dir) }
 
-  before  { @tmpdirs = [] }
+  before { @tmpdirs = [] }
 
   after do
     @tmpdirs.each(&:rmtree)

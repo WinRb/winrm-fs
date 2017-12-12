@@ -6,7 +6,6 @@ require_relative 'matchers'
 
 # Creates a WinRM connection for integration tests
 module ConnectionHelper
-  # rubocop:disable AbcSize
   def winrm_connection
     WinRM::Connection.new(config)
   end
@@ -14,8 +13,8 @@ module ConnectionHelper
 
   def config
     @config ||= begin
-      cfg = symbolize_keys(YAML.load(File.read(winrm_config_path)))
-      cfg.merge!(basic_auth_only: true) unless cfg[:transport].eql? :kerberos
+      cfg = symbolize_keys(YAML.safe_load(File.read(winrm_config_path)))
+      cfg[:basic_auth_only] = true unless cfg[:transport].eql? :kerberos
       merge_environment!(cfg)
       cfg
     end
@@ -25,9 +24,7 @@ module ConnectionHelper
     merge_config_option_from_environment(config, 'user')
     merge_config_option_from_environment(config, 'password')
     merge_config_option_from_environment(config, 'no_ssl_peer_verification')
-    if ENV['use_ssl_peer_fingerprint']
-      config[:options][:ssl_peer_fingerprint] = ENV['winrm_cert']
-    end
+    config[:options][:ssl_peer_fingerprint] = ENV['winrm_cert'] if ENV['use_ssl_peer_fingerprint']
     config[:endpoint] = ENV['winrm_endpoint'] if ENV['winrm_endpoint']
     config[:transport] = ENV['winrm_transport'] if ENV['winrm_transport']
   end

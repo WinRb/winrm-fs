@@ -102,9 +102,7 @@ module WinRM
         # @api private
         def clean_dirname(dir)
           paths = Pathname.glob(dir)
-          if paths.length != 1
-            fail "Expected Pathname.glob(dir) to return only dir, got #{paths}"
-          end
+          raise "Expected Pathname.glob(dir) to return only dir, got #{paths}" if paths.length != 1
           paths.first
         end
 
@@ -131,7 +129,8 @@ module WinRM
             logger.debug "+++ Adding #{entry_path}"
             zos.put_next_entry(
               zip_entry(entry_path),
-              nil, nil, ::Zip::Entry::DEFLATED, Zlib::BEST_COMPRESSION)
+              nil, nil, ::Zip::Entry::DEFLATED, Zlib::BEST_COMPRESSION
+            )
             entry.open('rb') { |src| IO.copy_stream(src, zos) }
           end
           logger.debug '=== All files added.'
