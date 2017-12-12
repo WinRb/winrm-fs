@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require_relative '../../lib/winrm-fs/core/tmp_zip'
 
 describe WinRM::FS::Core::TmpZip do

@@ -1,6 +1,6 @@
 inherit_from: .rubocop_todo.yml
 
-Style/FileName:
+Naming/FileName:
   Exclude:
     - 'lib/winrm-fs.rb'
 

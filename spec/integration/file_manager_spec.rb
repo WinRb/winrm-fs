@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require 'pathname'
 
 describe WinRM::FS::FileManager do

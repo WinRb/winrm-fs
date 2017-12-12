@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require 'date'
 
 version = File.read(File.expand_path('../VERSION', __FILE__)).strip
