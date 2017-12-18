@@ -1,7 +1,8 @@
 language: ruby
 rvm:
-  - 2.0.0
   - 2.1.0
+  - 2.3.4
+  - 2.4.1
 
 # This prevents testing branches that are created just for PRs
 branches:

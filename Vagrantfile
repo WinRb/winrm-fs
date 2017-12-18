@@ -1,8 +1,7 @@
-# encoding: UTF-8
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-VAGRANTFILE_API_VERSION = '2'
+VAGRANTFILE_API_VERSION = '2'.freeze
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = 'mwrock/WindowsNano'

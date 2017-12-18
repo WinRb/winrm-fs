@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require_relative '../../lib/winrm-fs/core/tmp_zip'
 
 describe WinRM::FS::Core::TmpZip do
@@ -18,9 +17,10 @@ describe WinRM::FS::Core::TmpZip do
   context 'create zip' do
     it 'should add all files in directory to the zip recursively' do
       expect(subject).to contain_zip_entries([
-        'exceptions.rb',
-        'core/tmp_zip.rb',
-        'scripts/checksum.ps1.erb'])
+                                               'exceptions.rb',
+                                               'core/tmp_zip.rb',
+                                               'scripts/checksum.ps1.erb'
+                                             ])
     end
   end
 end

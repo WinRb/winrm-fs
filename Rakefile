@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require 'rubygems'
 require 'bundler/setup'
 require 'rspec/core/rake_task'
@@ -23,6 +22,6 @@ end
 
 RuboCop::RakeTask.new
 
-task default: [:spec, :rubocop]
+task default: %i[spec rubocop]
 
-task all: [:default, :integration]
+task all: %i[default integration]

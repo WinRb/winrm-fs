@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require 'rspec/expectations'
 
 RSpec::Matchers.define :have_created do |remote_file|

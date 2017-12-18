@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 #
 # Author:: Fletcher (<fnichol@nichol.ca>)
 #
@@ -152,9 +151,7 @@ module WinRM
         # @api private
         def reconcile_destinations!(files)
           files.each do |_, data|
-            if data['target_is_folder'] == 'True'
-              data['dst'] = File.join(data['dst'], File.basename(data['src']))
-            end
+            data['dst'] = File.join(data['dst'], File.basename(data['src'])) if data['target_is_folder'] == 'True'
           end
         end
 
@@ -321,7 +318,7 @@ module WinRM
             elsif File.directory?(expanded)
               add_directory_hash!(hash, expanded, remote)
             else
-              fail Errno::ENOENT, "No such file or directory #{expanded}"
+              raise Errno::ENOENT, "No such file or directory #{expanded}"
             end
           end
           hash
@@ -362,10 +359,10 @@ module WinRM
           stderr = output.stderr
 
           if exitcode != 0
-            fail FileTransporterFailed, "[#{self.class}] Upload failed " \
+            raise FileTransporterFailed, "[#{self.class}] Upload failed " \
               "(exitcode: #{exitcode})\n#{stderr}"
           elsif stderr != '\r\n' && stderr != ''
-            fail FileTransporterFailed, "[#{self.class}] Upload failed " \
+            raise FileTransporterFailed, "[#{self.class}] Upload failed " \
               "(exitcode: 0), but stderr present\n#{stderr}"
           end
 
@@ -413,7 +410,8 @@ module WinRM
         # @api private
         def stream_upload(input_io, dest)
           read_size = ((max_encoded_write - dest.length) / 4) * 3
-          chunk, bytes = 1, 0
+          chunk = 1
+          bytes = 0
           buffer = ''
           shell.run(<<-EOS
             $to = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath("#{dest}")
@@ -436,7 +434,7 @@ module WinRM
             $bindingFlags= [Reflection.BindingFlags] "NonPublic,Static"
             $method = [scriptblock].GetMethod("ClearScriptBlockCache", $bindingFlags)
             EOS
-          )
+                   )
 
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
@@ -468,7 +466,8 @@ module WinRM
         # @api private
         def stream_upload_file(src, dest, &block)
           logger.debug "Uploading #{src} to #{dest}"
-          chunks, bytes = 0, 0
+          chunks = 0
+          bytes = 0
           elapsed = Benchmark.measure do
             File.open(src, 'rb') do |io|
               chunks, bytes = stream_upload(io, dest, &block)

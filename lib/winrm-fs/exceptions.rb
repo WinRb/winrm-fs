@@ -1,4 +1,3 @@
-# encoding: UTF-8
 #
 # Copyright 2015 Shawn Neal <sneal@sneal.net>
 #

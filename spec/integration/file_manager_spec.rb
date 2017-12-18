@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require 'pathname'
 
 describe WinRM::FS::FileManager do
@@ -110,8 +109,7 @@ describe WinRM::FS::FileManager do
     it 'yields progress data' do
       block_called = false
       total_bytes_copied = 0
-      total = subject.upload(this_file, dest_file) do \
-        |bytes_copied, total_bytes, local_path, remote_path|
+      total = subject.upload(this_file, dest_file) do |bytes_copied, total_bytes, local_path, remote_path|
         expect(total_bytes).to be > 0
         total_bytes_copied = bytes_copied
         expect(local_path).to eq(this_file.to_s)
