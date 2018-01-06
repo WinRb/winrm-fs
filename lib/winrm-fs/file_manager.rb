@@ -59,14 +59,24 @@ module WinRM
       # Downloads the specified remote file to the specified local path
       # @param [String] The full path on the remote machine
       # @param [String] The full path to write the file to locally
-      def download(remote_path, local_path)
+      def download(remote_path, local_path, recurse=true)
         @logger.debug("downloading: #{remote_path} -> #{local_path}")
         script = WinRM::FS::Scripts.render('download', path: remote_path)
         output = @connection.shell(:powershell) { |e| e.run(script) }
         return false if output.exitcode != 0
         contents = output.stdout.gsub('\n\r', '')
-        out = Base64.decode64(contents)
-        IO.binwrite(local_path, out)
+        unless contents.empty?
+          out = Base64.decode64(contents)
+          IO.binwrite(local_path, out)
+        else if recurse
+            # path is a directory
+            local_path = File.join("#{local_path}", File.basename("#{remote_path}"))
+            FileUtils.mkdir_p(local_path)
+            @connection.shell(:powershell){ |e| e.run("Get-ChildItem #{remote_path} | Select-Object Name").stdout.strip().split(/\n/).drop(2)}.each do |file|
+              download("#{File.join("#{remote_path}", file.strip())}", "#{File.join(local_paths file.strip())}")
+            end
+          end
+        end
         true
       end
 

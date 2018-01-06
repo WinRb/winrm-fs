@@ -1,8 +1,11 @@
 $p = $ExecutionContext.SessionState.Path
 $path = $p.GetUnresolvedProviderPathFromPSPath("<%= path %>")
-if (Test-Path $path -PathType Leaf) {
+If (Test-Path $path -PathType Leaf) {
   $bytes = [System.convert]::ToBase64String([System.IO.File]::ReadAllBytes($path))
   Write-Host $bytes
+  exit 0
+}
+ElseIf (Test-Path $path -PathType Container) {
   exit 0
 }
 exit 1
