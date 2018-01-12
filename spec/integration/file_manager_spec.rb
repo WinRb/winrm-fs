@@ -1,7 +1,8 @@
 require 'pathname'
 
 describe WinRM::FS::FileManager do
-  let(:dest_dir) { File.join(subject.temp_dir, "winrm_#{rand(2**16)}") }
+  let(:upload_dir) { "winrm_#{rand(2**16)}" }
+  let(:dest_dir) { File.join(subject.temp_dir, upload_dir) }
   let(:temp_upload_dir) { '$env:TEMP/winrm-upload' }
   let(:spec_dir) { File.expand_path(File.dirname(File.dirname(__FILE__))) }
   let(:this_file) { Pathname.new(__FILE__) }
@@ -35,6 +36,50 @@ describe WinRM::FS::FileManager do
   context 'temp_dir' do
     it 'should return the remote users temp dir' do
       expect(subject.temp_dir).to match(%r{C:/Users/\S+/AppData/Local/Temp})
+    end
+  end
+
+  context 'download file' do
+    let(:download_dir) { File.join(spec_dir, 'temp') }
+    let(:dest_file) { Pathname.new(File.join(dest_dir, File.basename(this_file))) }
+    let(:download_file) { Pathname.new(File.join(download_dir, File.basename(this_file))) }
+
+    before(:each) do
+      expect(subject.delete(dest_dir)).to be true
+      FileUtils.rm_rf(Dir.glob("#{download_dir}/*"))
+      FileUtils.mkdir_p(download_dir)
+    end
+
+    it 'should download the specified file' do
+      subject.upload(this_file, dest_file)
+      subject.download(dest_file, download_file)
+      expect(File.open(download_file).read).to eq(File.open(this_file).read)
+    end
+  end
+
+  context 'download directory' do
+    let(:download_dir) { File.join(spec_dir, 'temp') }
+    let(:dest_file) { Pathname.new(File.join(dest_dir, File.basename(this_file))) }
+    let(:root_dir) { File.expand_path('../../', File.dirname(__FILE__)) }
+    let(:winrm_fs_dir) { File.join(root_dir, 'lib/winrm-fs') }
+
+    before(:each) do
+      expect(subject.delete(dest_dir)).to be true
+      FileUtils.rm_rf(Dir.glob("#{download_dir}/*"))
+      FileUtils.mkdir_p(download_dir)
+    end
+
+    it 'downloads the directory contents recursively' do
+      subject.upload(winrm_fs_dir, dest_dir)
+      subject.download(dest_dir, download_dir)
+
+      Dir.glob(winrm_fs_dir + '/**/*.rb').each do |host_file|
+        host_file_rel = Pathname.new(host_file).relative_path_from(
+          Pathname.new(winrm_fs_dir)
+        ).to_s
+        download_file = File.join(download_dir, upload_dir, host_file_rel)
+        expect(File.open(download_file).read).to eq(File.open(host_file).read)
+      end
     end
   end
 
