@@ -423,7 +423,6 @@ module WinRM
                 [System.io.FileAccess]::Write,
                 [System.IO.FileShare]::ReadWrite
             )
-
             # Powershell caches ScrpitBlocks in a dictionary
             # keyed on the script block text. Thats just great
             # unless the script is super large and called a gillion
