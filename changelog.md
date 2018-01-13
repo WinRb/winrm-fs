@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.2.0
+- Add ability to download directories
+
 # 1.1.1
 - Remove empty items from powershell pipeline when extracting zip files
 
