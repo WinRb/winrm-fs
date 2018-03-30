@@ -125,7 +125,7 @@ module WinRM
         # @api private
         def produce_zip_entries(zos)
           entries.each do |entry|
-            entry_path = entry.sub(/#{dir}\//i, '')
+            entry_path = entry.relative_path_from(dir)
             logger.debug "+++ Adding #{entry_path}"
             zos.put_next_entry(
               zip_entry(entry_path),
