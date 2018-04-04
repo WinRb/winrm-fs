@@ -21,7 +21,7 @@ require 'digest'
 require 'securerandom'
 require 'stringio'
 
-require 'winrm/exeptions'
+require 'winrm/exceptions'
 require 'winrm-fs/core/tmp_zip'
 
 module WinRM
