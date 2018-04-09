@@ -116,7 +116,7 @@ module WinRM
       private
 
       def download_dir(remote_path, local_path, first)
-        local_path = File.join(local_path, File.basename(remote_path)) if first
+        local_path = File.join(local_path, File.basename(remote_path.to_s)) if first
         FileUtils.mkdir_p(local_path) unless File.directory?(local_path)
         command = "Get-ChildItem #{remote_path} | Select-Object Name"
         @connection.shell(:powershell) { |e| e.run(command) }.stdout.strip.split(/\n/).drop(2).each do |file|
