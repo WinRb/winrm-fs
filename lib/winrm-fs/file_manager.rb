@@ -59,25 +59,42 @@ module WinRM
       # Downloads the specified remote file to the specified local path
       # @param [String] The full path on the remote machine
       # @param [String] The full path to write the file to locally
+      # rubocop:disable Metrics/MethodLength
       def download(remote_path, local_path, first = true, chunk_size = 1024 * 1024, index = 0)
-        @logger.info("downloading: #{remote_path} -> #{local_path}")
+        @logger.debug("downloading: #{remote_path} -> #{local_path}")
+        output = _output_from_file(remote_path, chunk_size, index)
+        return download_dir(remote_path, local_path, first) if output.exitcode == 2
+
+        return false if output.exitcode >= 1
+
         File.open(local_path, 'wb') do |fd|
-          while true do
-              script = WinRM::FS::Scripts.render('download', path: remote_path, chunk_size: chunk_size, index: index)
-              output = @connection.shell(:powershell) { |e| e.run(script) }
-              if (output.exitcode == 1)
-                return false
-              elsif (output.exitcode == 2)
-                return download_dir(remote_path, local_path, first)
-              end
-              contents = output.stdout.gsub('\n\r', '')
-              out = Base64.decode64(contents)
-              return true if out.length == 0
-              index += out.length
-              fd.write(out)
+          out = _write_file(fd, output)
+          index += out.length
+          until out.empty?
+            output = _output_from_file(remote_path, chunk_size, index)
+            return false if output.exitcode >= 1
+
+            out = _write_file(fd, output)
+            index += out.length
           end
         end
         true
+      end
+      # rubocop:enable Metrics/MethodLength
+
+      def _output_from_file(remote_path, chunk_size = 1024 * 1024, index = 0)
+        script = WinRM::FS::Scripts.render('download', path: remote_path, chunk_size: chunk_size, index: index)
+        @connection.shell(:powershell) { |e| e.run(script) }
+      end
+
+      def _write_file(tofd, output)
+        contents = output.stdout.gsub('\n\r', '')
+        out = Base64.decode64(contents)
+        out = out[0, out.length - 1] if out.end_with? "\x00"
+        return out if out.empty?
+
+        tofd.write(out)
+        out
       end
 
       # Checks to see if the given path exists on the target file system.
