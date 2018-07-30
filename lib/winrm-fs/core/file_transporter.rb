@@ -56,6 +56,7 @@ module WinRM
           @shell  = shell
           @logger = shell.logger
           @id_generator = opts.fetch(:id_generator) { -> { SecureRandom.uuid } }
+          Zip.unicode_names = true
         end
 
         # Uploads a collection of files and/or directories to the remote host.
