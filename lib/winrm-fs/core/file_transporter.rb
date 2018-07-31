@@ -433,7 +433,7 @@ module WinRM
             # ClearScriptBlockCache to clear it.
             $bindingFlags= [Reflection.BindingFlags] "NonPublic,Static"
             $method = [scriptblock].GetMethod("ClearScriptBlockCache", $bindingFlags)
-            EOS
+          EOS
                    )
 
           while input_io.read(read_size, buffer)

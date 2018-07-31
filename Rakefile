@@ -4,7 +4,7 @@ require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
 
 # Change to the directory of this file.
-Dir.chdir(File.expand_path('../', __FILE__))
+Dir.chdir(File.expand_path(__dir__))
 
 # For gem creation and bundling
 require 'bundler/gem_tasks'

@@ -83,7 +83,7 @@ module WinRM
       # 'C:/Windows/Temp'
       # @return [String] Full path to the temp directory
       def temp_dir
-        @guest_temp ||= begin
+        @temp_dir ||= begin
           (@connection.shell(:powershell) { |e| e.run('$env:TEMP') }).stdout.chomp.tr('\\', '/')
         end
       end

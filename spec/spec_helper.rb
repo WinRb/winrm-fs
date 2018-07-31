@@ -9,7 +9,6 @@ module ConnectionHelper
   def winrm_connection
     WinRM::Connection.new(config)
   end
-  # rubocop:enable AbcSize
 
   def config
     @config ||= begin
