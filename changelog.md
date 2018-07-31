@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.2.1
+- Correctly handle unicode filenames
+
 # 1.2.0
 - Add ability to download directories
 
