@@ -7,6 +7,9 @@ Naming/FileName:
 Style/Encoding:
   Enabled: true
 
+Layout/EndOfLine:
+  Enabled: false
+
 Metrics/LineLength:
   Max: 120
 
