@@ -86,9 +86,25 @@ describe WinRM::FS::FileManager do
 
   context 'upload file' do
     let(:dest_file) { Pathname.new(File.join(dest_dir, File.basename(this_file))) }
+    let(:from_memory) { StringIO.new('Upload From Memory') }
 
     before(:each) do
       expect(subject.delete(dest_dir)).to be true
+    end
+
+    it 'should upload a single StringIO object to a remote file' do
+      subject.upload(from_memory, dest_file)
+      expect(subject).to have_created(dest_file).with_content(from_memory.string)
+    end
+
+    it 'should error if multiple StringIO objects passed to upload' do
+      expect { subject.upload([from_memory, from_memory], dest_file) }
+        .to raise_error(WinRM::FS::Core::UploadSourceError)
+    end
+
+    it 'should error if both a StringIO object and a file path passed to upload' do
+      expect { subject.upload([from_memory, this_file], dest_file) }
+        .to raise_error(WinRM::FS::Core::UploadSourceError)
     end
 
     it 'should upload the specified file' do
