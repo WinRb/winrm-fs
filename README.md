@@ -4,7 +4,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/wm6apa8ojfhfmwsf?svg=true)](https://ci.appveyor.com/project/winrb/winrm-fs)
 
 ## Uploading files
-Files may be copied from the local machine to the winrm endpoint. Individual files or directories, as well as arrays of files and directories may be specified:
+Files may be copied from the local machine to the winrm endpoint. Individual files or directories, as well as arrays of files and directories may be specified. Data from a `StringIO` object may also be uploaded to a remote file.
 ```ruby
 require 'winrm-fs'
 
@@ -16,6 +16,9 @@ file_manager.upload('file.txt', 'c:/file.txt')
 
 # upload the my_dir directory to c:/foo/my_dir
 file_manager.upload('/Users/sneal/my_dir', 'c:/foo/my_dir')
+
+# upload from an in-memory buffer
+file_manager.upload(StringIO.new('some data to upload'), 'c:/file.txt')
 
 # upload multiple directories and a file to c:\programData
 file_manager.upload([

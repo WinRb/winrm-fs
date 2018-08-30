@@ -32,6 +32,14 @@ module WinRM
       class FileTransporterFailed < ::WinRM::WinRMError; end
       # rubocop:disable MethodLength, AbcSize, ClassLength
 
+      # Exception for the case where upload source contains more than one
+      # StringIO object, or a combination of file/directory paths and StringIO object
+      class UploadSourceError < StandardError
+        def initialize(msg = 'Only a single StringIO object may be uploaded.')
+          super
+        end
+      end
+
       # Object which can upload one or more files or directories to a remote
       # host over WinRM using PowerShell scripts and CMD commands. Note that
       # this form of file transfer is *not* ideal and extremely costly on both
@@ -67,17 +75,16 @@ module WinRM
         # * progress yields block like net-scp progress
         # * final API: def upload(locals, remote, _options = {}, &_progress)
         #
-        # @param locals [Array<String>,String] one or more local file or
-        #   directory paths
+        # @param locals [Array<String>,String,StringIO] one or more
+        #   local file or directory paths, StringIO objects also accepted
         # @param remote [String] the base destination path on the remote host
         # @return [Hash] report hash, keyed by the local SHA1 digest
         def upload(locals, remote)
           files = nil
           report = nil
           remote = remote.to_s
-
           elapsed1 = Benchmark.measure do
-            files = make_files_hash(Array(locals), remote)
+            files = make_files_hash([locals].flatten, remote)
             report = check_files(files)
             merge_with_report!(files, report)
             reconcile_destinations!(files)
@@ -183,16 +190,15 @@ module WinRM
         # Adds an entry to a files Hash (keyed by local SHA1 digest) for a file.
         #
         # @param hash [Hash] hash to be mutated
-        # @param local [String] file path
+        # @param local [String, StringIO] file path or StringIO object
         # @param remote [String] path to destination on remote host
         # @api private
         def add_file_hash!(hash, local, remote)
           logger.debug "creating hash for file #{remote}"
-
           hash[sha1sum(local)] = {
             'src'   => local,
             'dst'   => remote,
-            'size'  => File.size(local)
+            'size'  => local.is_a?(StringIO) ? local.size : File.size(local)
           }
         end
 
@@ -223,7 +229,7 @@ module WinRM
               sha1,
               {
                 'target' => data.fetch('tmpzip', data['dst']),
-                'src_basename' => File.basename(data['src']),
+                'src_basename' => data['src'].is_a?(StringIO) ? data['dst'] : File.basename(data['src']),
                 'dst' => data['dst']
               }
             ]
@@ -302,33 +308,61 @@ module WinRM
         # digest. Each file entry has a source and destination set, at a
         # minimum.
         #
-        # @param locals [Array<String>] a collection of local files or
-        #   directories
+        # @param locals [Array<String,StringIO>] a collection of local files,
+        #   directories or StringIO objects
         # @param remote [String] the base destination path on the remote host
         # @return [Hash] files hash, keyed by the local SHA1 digest
         # @api private
         def make_files_hash(locals, remote)
           hash = {}
+          check_locals_array(locals)
           locals.each do |local|
-            local = local.to_s
-            expanded = File.expand_path(local)
-            expanded += local[-1] if local.end_with?('/', '\\')
-
-            if File.file?(expanded)
-              add_file_hash!(hash, expanded, remote)
-            elsif File.directory?(expanded)
-              add_directory_hash!(hash, expanded, remote)
+            if local.is_a?(StringIO)
+              add_file_hash!(hash, local, remote)
             else
-              raise Errno::ENOENT, "No such file or directory #{expanded}"
+              local = local.to_s
+              expanded = File.expand_path(local)
+              expanded += local[-1] if local.end_with?('/', '\\')
+              if File.file?(expanded)
+                add_file_hash!(hash, expanded, remote)
+              elsif File.directory?(expanded)
+                add_directory_hash!(hash, expanded, remote)
+              else
+                raise Errno::ENOENT, "No such file or directory #{expanded}"
+              end
             end
           end
           hash
         end
 
-        # @return [String] the SHA1 digest of a local file
+        # Ensure that only a single StringIO object is uploaded at a time
+        # This is necessary because the contents of the buffer will be written
+        # to the destination.
+        # @param locals [Array<String,StringIO>] a collection of local files,
+        #   directories or StringIO objects
+        # @api private
+        def check_locals_array(locals)
+          string_io = false
+          path = false
+          locals.each do |local|
+            raise UploadSourceError if string_io
+            if local.is_a?(StringIO)
+              string_io = true
+            else
+              path = true
+            end
+            raise UploadSourceError if string_io && path
+          end
+        end
+
+        # @return [String] the SHA1 digest of a local file or StringIO
         # @api private
         def sha1sum(local)
-          Digest::SHA1.file(local).hexdigest
+          if local.is_a?(StringIO)
+            Digest::SHA1.hexdigest(local.string)
+          else
+            Digest::SHA1.file(local).hexdigest
+          end
         end
 
         # Destructively merges a report Hash into an existing files Hash.
@@ -459,7 +493,7 @@ module WinRM
 
         # Uploads a local file.
         #
-        # @param src [String] path to a local file
+        # @param src [String, StringIO] path to a local file or StringIO object
         # @param dest [String] path to the file on the remote host
         # @return [Integer,Integer] the number of resulting upload chunks and
         #   the number of bytes transferred to the remote host
@@ -469,8 +503,12 @@ module WinRM
           chunks = 0
           bytes = 0
           elapsed = Benchmark.measure do
-            File.open(src, 'rb') do |io|
-              chunks, bytes = stream_upload(io, dest, &block)
+            if src.is_a?(StringIO)
+              chunks, bytes = stream_upload(src, dest, &block)
+            else
+              File.open(src, 'rb') do |io|
+                chunks, bytes = stream_upload(io, dest, &block)
+              end
             end
           end
           logger.debug(
