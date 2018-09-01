@@ -1,4 +1,9 @@
 # WinRM-fs Gem Changelog
+# 1.3.0
+- Upload from StringIO object
+- Add missing winrm/exceptions require in file_transporter
+- Use correct way to relativize paths of Zip entries
+
 # 1.2.1
 - Correctly handle unicode filenames
 
