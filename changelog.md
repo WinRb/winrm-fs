@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.3.1
+- Download files in chunks
+
 # 1.3.0
 - Upload from StringIO object
 - Add missing winrm/exceptions require in file_transporter
