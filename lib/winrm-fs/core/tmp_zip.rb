@@ -103,6 +103,7 @@ module WinRM
         def clean_dirname(dir)
           paths = Pathname.glob(dir)
           raise "Expected Pathname.glob(dir) to return only dir, got #{paths}" if paths.length != 1
+
           paths.first
         end
 

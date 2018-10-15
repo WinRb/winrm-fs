@@ -58,6 +58,24 @@ describe WinRM::FS::FileManager do
     end
   end
 
+  context 'download file chunked' do
+    let(:download_dir) { File.join(spec_dir, 'temp') }
+    let(:dest_file) { Pathname.new(File.join(dest_dir, File.basename(this_file))) }
+    let(:download_file) { Pathname.new(File.join(download_dir, File.basename(this_file))) }
+
+    before(:each) do
+      expect(subject.delete(dest_dir)).to be true
+      FileUtils.rm_rf(Dir.glob("#{download_dir}/*"))
+      FileUtils.mkdir_p(download_dir)
+    end
+
+    it 'should download the specified file in 1000 byte chunks' do
+      subject.upload(this_file, dest_file)
+      subject.download(dest_file, download_file, 1000)
+      expect(File.open(download_file).read).to eq(File.open(this_file).read)
+    end
+  end
+
   context 'download directory' do
     let(:download_dir) { File.join(spec_dir, 'temp') }
     let(:dest_file) { Pathname.new(File.join(dest_dir, File.basename(this_file))) }

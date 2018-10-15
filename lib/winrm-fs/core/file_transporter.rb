@@ -347,6 +347,7 @@ module WinRM
           path = false
           locals.each do |local|
             raise UploadSourceError if string_io
+
             if local.is_a?(StringIO)
               string_io = true
             else
