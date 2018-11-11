@@ -35,7 +35,7 @@ module WinRM
       def checksum(path, digest = 'SHA1')
         @logger.debug("checksum with #{digest}: #{path}")
         script = WinRM::FS::Scripts.render('checksum', path: path, digest: digest)
-        @connection.shell(:powershell) { |e| e.run(script).stdout.chomp }
+        ps_run(script).exitcode == 0
       end
 
       # Create the specifed directory recursively
@@ -44,7 +44,7 @@ module WinRM
       def create_dir(path)
         @logger.debug("create_dir: #{path}")
         script = WinRM::FS::Scripts.render('create_dir', path: path)
-        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
+        ps_run(script).exitcode == 0
       end
 
       # Deletes the file or directory at the specified path
@@ -53,7 +53,7 @@ module WinRM
       def delete(path)
         @logger.debug("deleting: #{path}")
         script = WinRM::FS::Scripts.render('delete', path: path)
-        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
+        ps_run(script).exitcode == 0
       end
 
       # Downloads the specified remote file to the specified local path
@@ -85,7 +85,7 @@ module WinRM
 
       def _output_from_file(remote_path, chunk_size, index)
         script = WinRM::FS::Scripts.render('download', path: remote_path, chunk_size: chunk_size, index: index)
-        @connection.shell(:powershell) { |e| e.run(script) }
+        ps_run(script)
       end
 
       def _write_file(tofd, output)
@@ -104,7 +104,7 @@ module WinRM
       def exists?(path)
         @logger.debug("exists?: #{path}")
         script = WinRM::FS::Scripts.render('exists', path: path)
-        @connection.shell(:powershell) { |e| e.run(script).exitcode == 0 }
+        ps_run(script).exitcode == 0
       end
 
       # Gets the current user's TEMP directory on the remote system, for example
@@ -112,7 +112,7 @@ module WinRM
       # @return [String] Full path to the temp directory
       def temp_dir
         @temp_dir ||= begin
-          (@connection.shell(:powershell) { |e| e.run('$env:TEMP') }).stdout.chomp.tr('\\', '/')
+          ps_run('$env:TEMP').stdout.chomp.tr('\\', '/')
         end
       end
 
@@ -137,11 +137,24 @@ module WinRM
       def upload(local_path, remote_path, &block)
         @connection.shell(:powershell) do |shell|
           file_transporter ||= WinRM::FS::Core::FileTransporter.new(shell)
-          file_transporter.upload(local_path, remote_path, &block)[0]
+          begin
+            file_transporter.upload(local_path, remote_path, &block)[0]
+          ensure
+            file_transporter.shell.close
+          end
         end
       end
 
       private
+
+      def ps_run(cmd)
+        shell = @connection.shell(:powershell)
+        begin
+          shell.run(cmd)
+        ensure
+          shell.close
+        end
+      end
 
       def download_dir(remote_path, local_path, chunk_size, first)
         local_path = File.join(local_path, File.basename(remote_path.to_s)) if first
