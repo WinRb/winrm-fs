@@ -140,7 +140,7 @@ module WinRM
           begin
             file_transporter.upload(local_path, remote_path, &block)[0]
           ensure
-            file_transporter.shell.close
+            file_transporter.close
           end
         end
       end
