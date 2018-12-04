@@ -30,7 +30,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip', '~> 1.1'
   s.add_runtime_dependency 'winrm', '~> 2.0'
   s.add_development_dependency 'pry'
-  s.add_development_dependency 'rake', '~> 10.3'
+  s.add_development_dependency 'rake', '>= 10.3', '< 13'
   s.add_development_dependency 'rspec', '~> 3.0'
   s.add_development_dependency 'rubocop', '~> 0.51'
 end
