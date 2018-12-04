@@ -1,8 +1,11 @@
+distro: xenial
+cache: bundler
 language: ruby
 rvm:
-  - 2.2.0
-  - 2.3.4
-  - 2.4.1
+  - 2.2.10
+  - 2.3.8
+  - 2.4.5
+  - 2.5.3
 
 # This prevents testing branches that are created just for PRs
 branches:
