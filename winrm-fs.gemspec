@@ -16,6 +16,7 @@ Gem::Specification.new do |s|
   s.description = <<-EOF
     Ruby library for file system operations via Windows Remote Management
   EOF
+  s.license = 'Apache-2.0'
 
   s.files = Dir.glob('{bin,lib,spec}/**/*') + %w[LICENSE README.md]
   s.require_path = 'lib'
