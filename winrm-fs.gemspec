@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   EOF
   s.license = 'Apache-2.0'
 
-  s.files = Dir.glob('{bin,lib,spec}/**/*') + %w[LICENSE README.md]
+  s.files = Dir.glob('{bin,lib}/**/*') + %w[LICENSE README.md]
   s.require_path = 'lib'
   s.rdoc_options = %w[-x test/ -x examples/]
   s.extra_rdoc_files = %w[README.md LICENSE]
