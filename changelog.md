@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.3.2
+- Limit the files that are shipped in the gem artifact
+
 # 1.3.1
 - Download files in chunks
 
