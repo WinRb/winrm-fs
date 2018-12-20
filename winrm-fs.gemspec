@@ -16,8 +16,9 @@ Gem::Specification.new do |s|
   s.description = <<-EOF
     Ruby library for file system operations via Windows Remote Management
   EOF
+  s.license = 'Apache-2.0'
 
-  s.files = `git ls-files`.split(/\n/)
+  s.files = Dir.glob('{bin,lib}/**/*') + %w[LICENSE README.md]
   s.require_path = 'lib'
   s.rdoc_options = %w[-x test/ -x examples/]
   s.extra_rdoc_files = %w[README.md LICENSE]
@@ -30,7 +31,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip', '~> 1.1'
   s.add_runtime_dependency 'winrm', '~> 2.0'
   s.add_development_dependency 'pry'
-  s.add_development_dependency 'rake', '~> 10.3'
+  s.add_development_dependency 'rake', '>= 10.3', '< 13'
   s.add_development_dependency 'rspec', '~> 3.0'
   s.add_development_dependency 'rubocop', '~> 0.51'
 end

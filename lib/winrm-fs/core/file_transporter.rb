@@ -179,12 +179,12 @@ module WinRM
           zip_sha1 = sha1sum(zip_io.path)
 
           hash[zip_sha1] = {
-            'src'     => dir,
+            'src' => dir,
             'src_zip' => zip_io.path.to_s,
-            'zip_io'  => zip_io,
-            'tmpzip'  => "#{TEMP_UPLOAD_DIRECTORY}\\tmpzip-#{zip_sha1}.zip",
-            'dst'     => "#{remote}\\#{File.basename(dir)}",
-            'size'    => File.size(zip_io.path)
+            'zip_io' => zip_io,
+            'tmpzip' => "#{TEMP_UPLOAD_DIRECTORY}\\tmpzip-#{zip_sha1}.zip",
+            'dst' => "#{remote}\\#{File.basename(dir)}",
+            'size' => File.size(zip_io.path)
           }
         end
 
@@ -197,9 +197,9 @@ module WinRM
         def add_file_hash!(hash, local, remote)
           logger.debug "creating hash for file #{remote}"
           hash[sha1sum(local)] = {
-            'src'   => local,
-            'dst'   => remote,
-            'size'  => local.is_a?(StringIO) ? local.size : File.size(local)
+            'src' => local,
+            'dst' => remote,
+            'size' => local.is_a?(StringIO) ? local.size : File.size(local)
           }
         end
 
