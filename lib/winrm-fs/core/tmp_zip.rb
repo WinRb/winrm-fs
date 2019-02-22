@@ -111,7 +111,7 @@ module WinRM
         #   directory, excluding directories
         # @api private
         def entries
-          Pathname.glob(dir.join('**/*')).delete_if(&:directory?).sort
+          Pathname.glob(dir.join("**/.*")).push(*Pathname.glob(dir.join("**/*"))).delete_if(&:directory?).sort
         end
 
         # (see Logging.log_subject)
