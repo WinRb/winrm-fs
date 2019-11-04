@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+# frozen_string_literal: false
 
 #
 # Author:: Fletcher (<fnichol@nichol.ca>)
@@ -451,6 +451,7 @@ module WinRM
           read_size = ((max_encoded_write - dest.length) / 4) * 3
           chunk = 1
           bytes = 0
+          # Do not freeze this string
           buffer = ''
           shell.run(<<-PS
             $to = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath("#{dest}")
