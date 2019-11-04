@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'pathname'
 
-# rubocop:disable BlockLength
+# rubocop:disable Metrics/BlockLength
 describe WinRM::FS::FileManager do
   let(:upload_dir) { "winrm_#{rand(2**16)}" }
   let(:dest_dir) { File.join(subject.temp_dir, upload_dir) }
@@ -300,4 +302,4 @@ describe WinRM::FS::FileManager do
     end
   end
 end
-# rubocop:enable BlockLength
+# rubocop:enable Metrics/BlockLength

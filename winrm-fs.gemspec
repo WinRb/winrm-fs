@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'date'
 
 version = File.read(File.expand_path('VERSION', __dir__)).strip
@@ -33,5 +35,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'pry'
   s.add_development_dependency 'rake', '>= 10.3', '< 13'
   s.add_development_dependency 'rspec', '~> 3.0'
-  s.add_development_dependency 'rubocop', '~> 0.51'
+  s.add_development_dependency 'rubocop', '~> 0.68.0'
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 #
 # Copyright 2015 Shawn Neal <sneal@sneal.net>
 #
@@ -19,7 +21,9 @@ module WinRM
   module FS
     # PS1 scripts
     module Scripts
+      # rubocop:disable Metrics/MethodLength
       def self.render(template, context)
+        # rubocop:enable Metrics/MethodLength
         template_path = File.expand_path(
           "#{File.dirname(__FILE__)}/#{template}.ps1.erb"
         )

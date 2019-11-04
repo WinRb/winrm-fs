@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 #
 # Author:: Fletcher (<fnichol@nichol.ca>)
 #
@@ -31,7 +33,7 @@ module WinRM
       #
       # @author Fletcher Nichol <fnichol@nichol.ca>
       class FileTransporterFailed < ::WinRM::WinRMError; end
-      # rubocop:disable MethodLength, AbcSize, ClassLength
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/ClassLength
 
       # Exception for the case where upload source contains more than one
       # StringIO object, or a combination of file/directory paths and StringIO object
@@ -450,7 +452,7 @@ module WinRM
           chunk = 1
           bytes = 0
           buffer = ''
-          shell.run(<<-EOS
+          shell.run(<<-PS
             $to = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath("#{dest}")
             $parent = Split-Path $to
             if(!(Test-path $parent)) { mkdir $parent | Out-Null }
@@ -469,7 +471,7 @@ module WinRM
             # ClearScriptBlockCache to clear it.
             $bindingFlags= [Reflection.BindingFlags] "NonPublic,Static"
             $method = [scriptblock].GetMethod("ClearScriptBlockCache", $bindingFlags)
-          EOS
+          PS
                    )
 
           while input_io.read(read_size, buffer)
@@ -486,11 +488,11 @@ module WinRM
         end
 
         def stream_command(encoded_bytes)
-          <<-EOS
+          <<-PS
             if($method) { $method.Invoke($Null, $Null) }
             $bytes=[Convert]::FromBase64String('#{encoded_bytes}')
             $fileStream.Write($bytes, 0, $bytes.length)
-          EOS
+          PS
         end
 
         # Uploads a local file.
@@ -560,7 +562,7 @@ module WinRM
           size / 3 * 4
         end
       end
-      # rubocop:enable MethodLength, AbcSize, ClassLength
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/ClassLength
     end
   end
 end
