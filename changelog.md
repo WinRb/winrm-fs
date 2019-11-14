@@ -1,4 +1,7 @@
 # WinRM-fs Gem Changelog
+# 1.3.4
+- Bump rubyzip dependency
+
 # 1.3.3
 - Replace erubis with erubi
 
