@@ -15,9 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'winrm'
+require 'winrm' unless defined?(WinRM::Connection)
 require 'logger'
-require 'pathname'
+require 'pathname' unless defined?(Pathname)
 require_relative 'winrm-fs/exceptions'
 require_relative 'winrm-fs/file_manager'
 

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rubygems'
+require 'rubygems' unless defined?(Gem)
 require 'bundler/setup'
 require 'winrm-fs'
-require 'json'
+require 'json' unless defined?(JSON)
 require_relative 'matchers'
 
 # Creates a WinRM connection for integration tests
