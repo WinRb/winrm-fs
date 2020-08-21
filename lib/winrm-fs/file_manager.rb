@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'winrm'
+require 'winrm' unless defined?(WinRM::Connection)
 require_relative 'scripts/scripts'
 require_relative 'core/file_transporter'
 

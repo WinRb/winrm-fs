@@ -18,9 +18,9 @@
 # limitations under the License.
 
 require 'delegate'
-require 'pathname'
-require 'tempfile'
-require 'zip'
+require 'pathname' unless defined?(Pathname)
+require 'tempfile' unless defined?(Tempfile)
+require 'zip' unless defined?(Zip)
 
 module WinRM
   module FS

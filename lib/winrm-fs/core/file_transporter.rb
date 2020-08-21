@@ -17,11 +17,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'benchmark'
-require 'csv'
-require 'digest'
-require 'securerandom'
-require 'stringio'
+require 'benchmark' unless defined?(Benchmark)
+require 'csv' unless defined?(CSV)
+require 'digest' unless defined?(Digest)
+require 'securerandom' unless defined?(SecureRandom)
+require 'stringio' unless defined?(StringIO)
 
 require 'winrm/exceptions'
 require 'winrm-fs/core/tmp_zip'
