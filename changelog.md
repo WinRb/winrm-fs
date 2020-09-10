@@ -1,4 +1,9 @@
 # WinRM-fs Gem Changelog
+# 1.3.5
+- Optimize requires
+- Ensure connections are closed
+- Include dot files
+
 # 1.3.4
 - Bump rubyzip dependency
 
