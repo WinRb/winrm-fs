@@ -30,6 +30,7 @@ describe WinRM::FS::Core::TmpZip do
     create_local_file(src_dir.join('apple.txt'), 'appleapple')
     create_local_file(src_dir.join('banana.txt'), 'bananabanana')
     create_local_file(src_dir.join('cherry.txt'), 'cherrycherry')
+    create_local_file(src_dir.join('.dotfile'), 'dotfiledotfile')
     sub_dir.mkpath
     create_local_file(sub_dir.join('carrot.txt'), 'carrotcarrot')
     src_dir
@@ -65,11 +66,12 @@ describe WinRM::FS::Core::TmpZip do
       zip = Zip::File.new(tmp_zip.path)
 
       expect(zip.map(&:name).sort).to eq(
-        ['apple.txt', 'banana.txt', 'cherry.txt', 'veggies/carrot.txt']
+        ['.dotfile', 'apple.txt', 'banana.txt', 'cherry.txt', 'veggies/carrot.txt']
       )
       expect(zip.read('apple.txt')).to eq 'appleapple'
       expect(zip.read('banana.txt')).to eq 'bananabanana'
       expect(zip.read('cherry.txt')).to eq 'cherrycherry'
+      expect(zip.read('.dotfile')).to eq 'dotfiledotfile'
       expect(zip.read('veggies/carrot.txt')).to eq 'carrotcarrot'
     end
   end
