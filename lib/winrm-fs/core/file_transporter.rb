@@ -117,6 +117,10 @@ module WinRM
           [total_size, files]
         end
 
+        def close
+          shell.close
+        end
+
         private
 
         # @return [String] the Array pack template for Base64 encoding a stream
