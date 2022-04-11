@@ -9,7 +9,11 @@ environment:
   winrm_password: Pass@word1
 
   matrix:
-    - ruby_version: "24"
+    - ruby_version: "27"
+      winrm_endpoint: http://localhost:5985/wsman
+    - ruby_version: "31"
+      winrm_endpoint: http://localhost:5985/wsman
+    - ruby_version: "30"
       winrm_endpoint: http://localhost:5985/wsman
 
 clone_folder: c:\projects\winrm-fs
