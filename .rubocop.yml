@@ -1,6 +1,6 @@
 inherit_from: .rubocop_todo.yml
 AllCops:
-  TargetRubyVersion: 2.4
+  TargetRubyVersion: 2.5
   
 Naming/FileName:
   Exclude:
@@ -12,7 +12,7 @@ Style/Encoding:
 Layout/EndOfLine:
   Enabled: false
 
-Metrics/LineLength:
+Layout/LineLength:
   Max: 120
 
 Metrics/AbcSize:

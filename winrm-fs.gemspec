@@ -27,7 +27,7 @@ Gem::Specification.new do |s|
 
   s.bindir = 'bin'
   s.executables = ['rwinrmcp']
-  s.required_ruby_version = '>= 2.4.0'
+  s.required_ruby_version = '>= 2.5.0'
   s.add_runtime_dependency 'erubi', '>= 1.7'
   s.add_runtime_dependency 'logging', ['>= 1.6.1', '< 3.0']
   s.add_runtime_dependency 'rubyzip', '~> 2.0'
@@ -35,5 +35,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'pry'
   s.add_development_dependency 'rake', '>= 10.3', '< 13'
   s.add_development_dependency 'rspec', '~> 3.0'
-  s.add_development_dependency 'rubocop', '~> 0.68.0'
+  s.add_development_dependency 'rubocop', '~> 1.26.0'
 end
