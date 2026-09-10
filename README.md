@@ -1,8 +1,7 @@
 # File system operations over Windows Remote Management (WinRM) for Ruby
 
-[![Build Status](https://travis-ci.org/WinRb/winrm-fs.svg?branch=master)](https://travis-ci.org/WinRb/winrm-fs)
+[![CI](https://github.com/WinRb/winrm-fs/actions/workflows/ci.yml/badge.svg)](https://github.com/WinRb/winrm-fs/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/winrm-fs.svg)](http://badge.fury.io/rb/winrm-fs)
-[![Build status](https://ci.appveyor.com/api/projects/status/wm6apa8ojfhfmwsf?svg=true)](https://ci.appveyor.com/project/winrb/winrm-fs)
 
 ## Uploading files
 
@@ -59,7 +58,7 @@ first.
 3. Run the unit and integration tests (bundle exec rake integration)
 4. Commit your changes (git commit -am "Added a sweet feature")
 5. Push to the branch (git push origin my_feature_branch)
-6. Create a pull request from your branch into master (Please be sure to provide enough detail for us to cipher what this change is doing)
+6. Create a pull request from your branch into main (Please be sure to provide enough detail for us to cipher what this change is doing)
 
 ### Running the tests
 
