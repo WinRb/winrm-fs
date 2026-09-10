@@ -149,12 +149,12 @@ module WinRM
           end
         end
 
+        # rubyzip 3.x takes optional Entry arguments as keywords
         def zip_entry(entry_path)
           Zip::Entry.new(
             zip_io.path,
             entry_path.to_s,
-            nil, nil, nil, nil, nil, nil,
-            ::Zip::DOSTime.new(2000)
+            time: ::Zip::DOSTime.new(2000)
           )
         end
 
