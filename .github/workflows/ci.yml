@@ -45,8 +45,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    # Advisory for now: pre-existing offenses will be cleaned up in a dedicated pass.
-    continue-on-error: true
+    # Required: rubocop reports zero offenses (see .rubocop.yml / .rubocop_todo.yml).
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
