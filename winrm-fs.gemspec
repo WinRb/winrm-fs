@@ -32,10 +32,13 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'csv', '~> 3.3'
   s.add_runtime_dependency 'erubi', '>= 1.7'
   s.add_runtime_dependency 'logging', ['>= 1.6.1', '< 3.0']
-  s.add_runtime_dependency 'rubyzip', '~> 2.0'
+  # rubyzip >= 3.4.0 fixes CVE-2026-85396 (High, path traversal on extract;
+  # no backport to 2.x) and moves optional Entry args to keywords.
+  s.add_runtime_dependency 'rubyzip', '~> 3.4'
   s.add_runtime_dependency 'winrm', '~> 2.0'
   s.add_development_dependency 'pry'
-  s.add_development_dependency 'rake', '>= 10.3', '< 13'
+  # rake 13.3+ no longer requires ostruct, which is not a bundled gem on Ruby 4.0
+  s.add_development_dependency 'rake', '>= 10.3', '< 14'
   s.add_development_dependency 'rspec', '~> 3.0'
   s.add_development_dependency 'rubocop', '~> 1.26.0'
 end
