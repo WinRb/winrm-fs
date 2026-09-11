@@ -1,4 +1,10 @@
 # WinRM-fs Gem Changelog
+# 1.3.6
+- Bump rubyzip dependency to ~> 3.4 (fixes CVE-2026-85396, path traversal on extract; no 2.x backport)
+- Relax erubi dependency
+- Add explicit logger runtime dependency (no longer bundled on Ruby 4.0)
+- Modernize CI: pinned actions, Ruby 3.0-4.0 matrix, trusted publishing to RubyGems
+
 # 1.3.5
 - Optimize requires
 - Ensure connections are closed
