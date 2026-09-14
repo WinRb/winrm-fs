@@ -18,7 +18,6 @@
 # limitations under the License.
 
 require 'benchmark' unless defined?(Benchmark)
-require 'csv' unless defined?(CSV)
 require 'digest' unless defined?(Digest)
 require 'securerandom' unless defined?(SecureRandom)
 require 'stringio' unless defined?(StringIO)
