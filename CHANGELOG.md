@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [1.3.6]
+## [1.3.7]
 
 - Fix compatibility with winrm 2.4.0: use stdlib `logger` instead of the `logging` gem, which winrm no longer requires (#99)
 - Defer `rubyzip` and `csv` requires and drop the unused `logger` require (#100)
