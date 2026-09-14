@@ -31,7 +31,6 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'benchmark'
   s.add_runtime_dependency 'csv', '~> 3.3'
   s.add_runtime_dependency 'erubi', '>= 1.7'
-  # the 'logging' gem requires 'logger' but does not declare it;
   # logger is no longer a bundled gem on Ruby 4.0
   s.add_runtime_dependency 'logger'
   # rubyzip >= 3.4.0 fixes CVE-2026-85396 (High, path traversal on extract;
