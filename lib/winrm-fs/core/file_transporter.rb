@@ -66,6 +66,7 @@ module WinRM
           @shell  = shell
           @logger = shell.logger
           @id_generator = opts.fetch(:id_generator) { -> { SecureRandom.uuid } }
+          require 'zip'
           Zip.unicode_names = true
         end
 
@@ -407,6 +408,8 @@ module WinRM
             raise FileTransporterFailed, "[#{self.class}] Upload failed " \
               "(exitcode: 0), but stderr present\n#{stderr}"
           end
+
+          require 'csv'
 
           logger.debug 'Parsing CSV Response'
           logger.debug output.stdout
