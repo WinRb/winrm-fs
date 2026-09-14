@@ -18,7 +18,6 @@
 # limitations under the License.
 
 require 'benchmark' unless defined?(Benchmark)
-require 'csv' unless defined?(CSV)
 require 'digest' unless defined?(Digest)
 require 'securerandom' unless defined?(SecureRandom)
 require 'stringio' unless defined?(StringIO)
@@ -67,6 +66,7 @@ module WinRM
           @shell  = shell
           @logger = shell.logger
           @id_generator = opts.fetch(:id_generator) { -> { SecureRandom.uuid } }
+          require 'zip' unless defined?(Zip)
           Zip.unicode_names = true
         end
 
@@ -408,6 +408,8 @@ module WinRM
             raise FileTransporterFailed, "[#{self.class}] Upload failed " \
               "(exitcode: 0), but stderr present\n#{stderr}"
           end
+
+          require 'csv' unless defined?(CSV)
 
           logger.debug 'Parsing CSV Response'
           logger.debug output.stdout
