@@ -20,7 +20,6 @@
 require 'delegate'
 require 'pathname' unless defined?(Pathname)
 require 'tempfile' unless defined?(Tempfile)
-require 'zip' unless defined?(Zip)
 
 module WinRM
   module FS
@@ -68,6 +67,7 @@ module WinRM
         # @param logger [#debug,#debug?] an optional logger/ui object that
         #   responds to `#debug` and `#debug?` (default `nil`)
         def initialize(dir, logger = nil)
+          require 'zip' unless defined?(Zip)
           @logger = logger || Logging.logger[self]
           @dir = clean_dirname(dir)
           @zip_io = Tempfile.open(['tmpzip-', '.zip'], binmode: true)
