@@ -18,6 +18,7 @@
 # limitations under the License.
 
 require 'delegate'
+require 'logger' unless defined?(Logger)
 require 'pathname' unless defined?(Pathname)
 require 'tempfile' unless defined?(Tempfile)
 require 'zip' unless defined?(Zip)
@@ -68,7 +69,7 @@ module WinRM
         # @param logger [#debug,#debug?] an optional logger/ui object that
         #   responds to `#debug` and `#debug?` (default `nil`)
         def initialize(dir, logger = nil)
-          @logger = logger || Logging.logger[self]
+          @logger = logger || Logger.new(nil)
           @dir = clean_dirname(dir)
           @zip_io = Tempfile.open(['tmpzip-', '.zip'], binmode: true)
           write_zip
@@ -114,12 +115,6 @@ module WinRM
         # @api private
         def entries
           Pathname.glob(dir.join('**/.*')).push(*Pathname.glob(dir.join('**/*'))).delete_if(&:directory?).sort
-        end
-
-        # (see Logging.log_subject)
-        # @api private
-        def log_subject
-          @log_subject ||= [self.class.to_s.split('::').last, path].join('::')
         end
 
         # Adds all file entries to the Zip output stream.
