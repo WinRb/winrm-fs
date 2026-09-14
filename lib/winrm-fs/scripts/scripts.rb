@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'erubi'
+require 'erb'
 
 module WinRM
   module FS
@@ -40,7 +40,7 @@ module WinRM
         else
           raise ArgumentError
         end
-        b.eval(Erubi::Engine.new(template).src)
+        ERB.new(template).result(b)
       end
     end
   end
