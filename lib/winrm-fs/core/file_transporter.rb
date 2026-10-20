@@ -123,6 +123,15 @@ module WinRM
 
         private
 
+        # @return [Integer] the number of chunks between forced garbage
+        #   collections on the remote host during a streamed upload. Each
+        #   chunk leaves Large Object Heap garbage (the unique script text and
+        #   its compiled ScriptBlock) that only a Gen2 collection reclaims,
+        #   which may not run on its own during a long upload. Collecting
+        #   periodically bounds remote memory growth.
+        # @api private
+        GC_COLLECT_CHUNKS = 50
+
         # @return [String] the Array pack template for Base64 encoding a stream
         #   of data
         # @api private
@@ -469,6 +478,17 @@ module WinRM
                 [System.io.FileAccess]::Write,
                 [System.IO.FileShare]::ReadWrite
             )
+            # Decode each base64 chunk straight into the file stream instead
+            # of allocating a byte array per chunk. A per-chunk array lands on
+            # the Large Object Heap and piles up between Gen2 collections,
+            # which exhausted the remote host's memory on large uploads.
+            $transform = New-Object -TypeName System.Security.Cryptography.FromBase64Transform
+            $cryptoStream = New-Object -TypeName System.Security.Cryptography.CryptoStream -ArgumentList @(
+                $fileStream,
+                $transform,
+                [System.Security.Cryptography.CryptoStreamMode]::Write
+            )
+            $writer = New-Object -TypeName System.IO.StreamWriter -ArgumentList @($cryptoStream)
             # Powershell caches ScrpitBlocks in a dictionary
             # keyed on the script block text. Thats just great
             # unless the script is super large and called a gillion
@@ -483,22 +503,27 @@ module WinRM
 
           while input_io.read(read_size, buffer)
             bytes += (buffer.bytesize / 3 * 4)
-            shell.run(stream_command([buffer].pack(BASE64_PACK)))
+            shell.run(stream_command([buffer].pack(BASE64_PACK), chunk))
             logger.debug "Wrote chunk #{chunk} for #{dest}" if chunk % 25 == 0
             chunk += 1
             yield bytes if block_given?
           end
-          shell.run('$fileStream.Dispose()')
+          shell.run(<<-PS
+            $writer.Dispose()
+            $fileStream.Dispose()
+          PS
+                   )
           buffer = nil # rubocop:disable Lint/UselessAssignment
 
           [chunk - 1, bytes]
         end
 
-        def stream_command(encoded_bytes)
+        def stream_command(encoded_bytes, chunk = 1)
+          gc = chunk % GC_COLLECT_CHUNKS == 0 ? "\n            [System.GC]::Collect()" : ''
           <<-PS
-            if($method) { $method.Invoke($Null, $Null) }
-            $bytes=[Convert]::FromBase64String('#{encoded_bytes}')
-            $fileStream.Write($bytes, 0, $bytes.length)
+            if($method) { $method.Invoke($Null, $Null) }#{gc}
+            $writer.Write('#{encoded_bytes}')
+            $writer.Flush()
           PS
         end
 
