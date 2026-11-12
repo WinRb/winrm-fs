@@ -27,7 +27,8 @@ Gem::Specification.new do |s|
 
   s.bindir = 'bin'
   s.executables = ['rwinrmcp']
-  s.required_ruby_version = '>= 2.5.0'
+  # 3.0 is the install floor; 3.1+ is the supported range (see README).
+  s.required_ruby_version = '>= 3.0'
   s.add_runtime_dependency 'benchmark'
   s.add_runtime_dependency 'csv', '~> 3.3'
   # logger is no longer a bundled gem on Ruby 4.0
