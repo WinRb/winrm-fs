@@ -3,6 +3,10 @@
 [![CI](https://github.com/WinRb/winrm-fs/actions/workflows/ci.yml/badge.svg)](https://github.com/WinRb/winrm-fs/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/winrm-fs.svg)](http://badge.fury.io/rb/winrm-fs)
 
+## Supported Ruby Versions
+
+Ruby 3.1 or higher is supported. The gem can still be installed on Ruby 3.0, but 3.0 is end-of-life and not tested.
+
 ## Uploading files
 
 Files may be copied from the local machine to the winrm endpoint. Individual files or directories, as well as arrays of files and directories may be specified. Data from a `StringIO` object may also be uploaded to a remote file.
