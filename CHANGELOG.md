@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Reduce remote memory use on large uploads: decode base64 chunks straight into the file stream via `CryptoStream` instead of allocating a byte array per chunk, and force a garbage collection every 50 chunks so Large Object Heap garbage cannot pile up (#55)
+
 ## [1.3.7]
 
 - Fix compatibility with winrm 2.4.0: use stdlib `logger` instead of the `logging` gem, which winrm no longer requires (#99)
